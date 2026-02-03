@@ -32,7 +32,7 @@
 
     "forwardPorts": [5173],
     "portsAttributes": {
-        "3000": {
+        "5173": {
             "label": "Vite.js Application",
             "onAutoForward": "notify"
         }
