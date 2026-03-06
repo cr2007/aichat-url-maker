@@ -1,5 +1,7 @@
 # ChatGPT Prompt URL Generator
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cr2007/chatgpt-url-maker)
+
 A small web app built in [Vite](https://vite.dev) that builds shareable [ChatGPT](https://chat.com) URLs with prefilled prompts and optional ChatGPT feature hints.
 
 You can try out the app now at https://cr2007.github.io/chatgpt-url-maker

@@ -55,7 +55,7 @@ function PageContent() {
 
   return (
     <main className="min-h-screen bg-background p-6 md:p-12">
-      <div className="max-w mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-3">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">ChatGPT Prompt URL Generator</h1>
