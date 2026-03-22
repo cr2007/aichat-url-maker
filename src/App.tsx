@@ -68,6 +68,7 @@ function PageContent() {
                 className="flex items-center gap-2 px-4 py-2 rounded-md border border-border bg-secondary hover:bg-secondary/80 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary transition-all"
                 aria-label={p.name}
               >
+                {p.icon}
                 <span className="text-sm font-medium">{p.name}</span>
               </ToggleGroupItem>
             ))}
