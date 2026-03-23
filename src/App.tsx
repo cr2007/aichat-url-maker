@@ -140,7 +140,7 @@ function PageContent() {
                 className="flex items-center gap-2"
                 aria-pressed={temporaryChat}
               >
-                <MessageCircleDashed className="w-4 h-4" />
+                {provider.temporaryChatIcon ?? <MessageCircleDashed className="w-4 h-4" />}
                 Temporary Chat
               </Button>
             </div>
