@@ -180,12 +180,12 @@ function PageContent() {
         {/* Info Section */}
         <div className="p-4 rounded-lg bg-secondary border border-border space-y-2">
           <h3 className="text-sm font-semibold text-foreground">How it works</h3>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Select your preferred AI provider above</li>
-            <li>• Enter any prompt you'd like to use</li>
-            <li>• Optionally select features (where supported)</li>
-            <li>• Copy the generated URL to share with others</li>
-            <li>• Or click "Open in ..." to use it immediately</li>
+          <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+            <li>Select your preferred AI provider above</li>
+            <li>Enter any prompt you'd like to use</li>
+            <li>Optionally select features (where supported)</li>
+            <li>Copy the generated URL to share with others</li>
+            <li>Or click "Open in ..." to use it immediately</li>
           </ul>
         </div>
       </div>
