@@ -1,13 +1,13 @@
-# ChatGPT Prompt URL Generator
+# AI Chat Prompt URL Generator
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cr2007/chatgpt-url-maker)
 
-A small web app built in [Vite](https://vite.dev) that builds shareable [ChatGPT](https://chat.com) URLs with prefilled prompts and optional ChatGPT feature hints.
+A small web app built in [Vite](https://vite.dev) that builds shareable AI Chat URLs with prefilled prompts and optional feature hints.
 
 You can try out the app now at https://cr2007.github.io/chatgpt-url-maker
 
 Why this helps
-- Create, copy, and open URLs that prefill prompts in ChatGPT for sharing or quick reuse.
+- Create, copy, and open URLs that prefill prompts in your favourite AI chat app for sharing or quick reuse.
 - Adds optional flags (features, temporary chat) to the URL so workflows can be shared precisely.
 
 ---
@@ -31,7 +31,7 @@ bun dev # Starts the development server
 
 And then you can access the web app at http://localhost:5173
 
-## Node.js 
+## Node.js
 
 If you wish to run the application via [Node.js](https://nodejs.org), you can do so using the following steps:
 
