@@ -6,10 +6,10 @@ This document provides essential context, architecture details, and working conv
 
 ## Project Overview
 
-**Project name:** ChatGPT Prompt URL Generator
+**Project name:** AI Chat Prompt URL Generator
 
 **Purpose:**
-A small frontend-only web application that generates shareable URLs which open ChatGPT with a prefilled prompt and optional feature flags (search, image generation, research, canvas, temporary chat).
+A small frontend-only web application that generates shareable URLs which open various AI chat platforms (ChatGPT, Claude, Perplexity, etc.) with a prefilled prompt and optional feature flags.
 
 **Live site:**
 https://cr2007.github.io/chatgpt-url-maker
@@ -34,18 +34,18 @@ https://cr2007.github.io/chatgpt-url-maker
 
 ### What the app does
 - Accepts a user prompt.
-- Encodes it into a ChatGPT-compatible URL using query parameters.
-- Optionally adds:
-  - a single feature hint (e.g. search, image, research, canvas)
-  - a temporary chat flag
+- Lets user select an AI provider (ChatGPT, Claude, Perplexity, etc.).
+- Encodes the prompt into a provider-specific URL using query parameters.
+- Optionally adds provider-specific feature flags (where supported).
+- Optionally adds temporary chat/incognito flags (where supported).
 - Outputs a URL that can be copied or opened directly.
 
 ### What the app does not do
 - No backend or server logic.
-- No API calls.
+- No API calls to AI providers.
 - No authentication.
 - No persistence or analytics.
-- No OpenAI SDK usage.
+- No direct usage of AI provider SDKs.
 
 ---
 
@@ -65,7 +65,8 @@ src/
 │     ├─ toggle.tsx
 │     └─ toggle-group.tsx
 └─ lib/
-└─ utils.ts             # cn() helper (clsx + tailwind-merge)
+   ├─ providers.tsx       # AI provider configurations and URL builders
+   └─ utils.ts            # cn() helper (clsx + tailwind-merge)
 ```
 
 ---
@@ -83,7 +84,7 @@ Runs the app at `http://localhost:5173`.
 
 ### Alternative (Node.js)
 
-```
+```sh
 npm install
 npm run dev
 ```
@@ -133,24 +134,36 @@ Do not hardcode or change the base path logic in `vite.config.ts`.
 
 ---
 
-## URL Generation Rules (Critical)
+## URL Generation Rules (Important)
 
-When modifying URL logic:
+Each AI provider has its own URL structure and parameters:
 
-- Base URL must remain:
-
-```
-[https://chatgpt.com/](https://chatgpt.com/)
-```
-
+### ChatGPT
+- Base URL: `https://chatgpt.com/`
 - Query parameters:
-- `q` → prompt text (required)
-- `hints` → single feature value (optional)
-- `temporary-chat=true` → optional flag
-- Use `URL` and `URLSearchParams`.
-- Do not manually encode query strings.
+  - `q` → prompt text (required)
+  - `hints` → single feature value (optional, e.g., "search", "image", etc.)
+  - `temporary-chat=true` → optional flag
+- Uses `URL` and `URLSearchParams` for proper encoding.
 
-Breaking these rules may silently invalidate generated URLs.
+### Claude
+- Base URL: `https://claude.ai/new`
+- Query parameters:
+  - `q` → prompt text (required)
+  - `incognito` → added to query string when temporary chat is enabled (no value)
+- Uses `URL` and `URLSearchParams` for proper encoding.
+
+### Perplexity
+- Base URL: `https://www.perplexity.ai/search`
+- Query parameters:
+  - `q` → prompt text (required)
+- Uses `URL` and `URLSearchParams` for proper encoding.
+
+**Critical guidelines:**
+- Do not manually encode query strings - always use `URLSearchParams`.
+- Each provider's `buildURL` function handles its specific format.
+- When adding new providers, follow the existing pattern in `src/lib/providers.tsx`.
+- Breaking these rules may silently invalidate generated URLs.
 
 ---
 
@@ -158,19 +171,23 @@ Breaking these rules may silently invalidate generated URLs.
 
 - Adding a backend or server.
 - Introducing analytics, cookies, or tracking.
-- Adding OpenAI SDKs or API keys.
+- Adding AI provider SDKs or API keys.
 - Changing deployment strategy without explicit instruction.
 - Overengineering abstractions or state management.
+- Making provider-specific changes that break the abstraction layer.
+- Hardcoding URLs or query parameters outside of provider configurations.
 
 ---
 
 ## Good Contribution Examples
 
-- Adding a new ChatGPT feature toggle.
+- Adding a new AI provider (following the pattern in `providers.tsx`).
+- Adding new feature flags for an existing provider (where supported).
 - Improving accessibility or keyboard navigation.
 - Enhancing copy or feedback UX.
 - Fixing URL encoding edge cases.
 - Minor visual polish aligned with existing design.
+- Updating dependencies or CI/CD configurations.
 
 ---
 
@@ -178,7 +195,5 @@ Breaking these rules may silently invalidate generated URLs.
 
 Keep the app simple and focused.
 
-The primary goal is fast, shareable prompt URLs.
+The primary goal is fast, shareable prompt URLs across multiple AI chat platforms.
 If a change does not directly support that goal, reconsider whether it belongs.
-
----
