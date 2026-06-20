@@ -12,7 +12,7 @@ This document provides essential context, architecture details, and working conv
 A small frontend-only web application that generates shareable URLs which open various AI chat platforms (ChatGPT, Claude, Perplexity, etc.) with a prefilled prompt and optional feature flags.
 
 **Live site:**
-https://cr2007.github.io/chatgpt-url-maker
+https://cr2007.github.io/aichat-url-maker
 
 ---
 
@@ -21,7 +21,7 @@ https://cr2007.github.io/chatgpt-url-maker
 - React 19
 - Vite
 - TypeScript (strict mode)
-- Bun (preferred runtime and package manager)
+- Bun (required runtime and package manager -- do not use Node.js or npm)
 - Tailwind CSS v4 + CSS variables
 - Radix UI primitives
 - Lucide icons
@@ -73,21 +73,12 @@ src/
 
 ## Development Workflow
 
-### Recommended (Bun)
-
 ```sh
 bun i
 bun dev
 ```
 
 Runs the app at `http://localhost:5173`.
-
-### Alternative (Node.js)
-
-```sh
-npm install
-npm run dev
-```
 
 ---
 
@@ -169,6 +160,7 @@ Each AI provider has its own URL structure and parameters:
 
 ## Things AI Agents Should Avoid
 
+- Using Node.js, npm, or npx -- always use Bun (`bun`, `bunx`).
 - Adding a backend or server.
 - Introducing analytics, cookies, or tracking.
 - Adding AI provider SDKs or API keys.

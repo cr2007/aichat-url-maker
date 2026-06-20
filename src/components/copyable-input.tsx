@@ -92,8 +92,11 @@ const CopyableInput = React.forwardRef<HTMLTextAreaElement, CopyableInputProps>(
             "disabled:pointer-events-none disabled:opacity-50",
           )}
         >
-          {/* Show different icon based on copy state */}
-          {isCopied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          {isCopied ? (
+            <Check className="size-4 animate-[check-pop_0.3s_ease-out]" />
+          ) : (
+            <Copy className="size-4" />
+          )}
         </button>
 
         {/* Tooltip that appears on copy */}
