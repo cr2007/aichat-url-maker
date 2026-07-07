@@ -58,15 +58,18 @@ src/
 ├─ index.css               # Tailwind setup and theme variables
 ├─ components/
 │  ├─ copyable-input.tsx   # Read-only textarea with copy UX
-│  ├─ theme-provider.tsx   # Dark/light/system theme handling
+│  ├─ mode-toggle.tsx      # Light/Dark/System theme dropdown
+│  ├─ theme-provider.tsx   # Theme context and localStorage persistence
 │  └─ ui/                  # shadcn-style Radix wrappers
 │     ├─ button.tsx
 │     ├─ checkbox.tsx
+│     ├─ dropdown-menu.tsx
 │     ├─ toggle.tsx
 │     └─ toggle-group.tsx
 └─ lib/
-   ├─ providers.tsx       # AI provider configurations and URL builders
-   └─ utils.ts            # cn() helper (clsx + tailwind-merge)
+   ├─ providers.tsx        # AI provider configs and URL builders
+   ├─ providers.test.ts    # Unit tests for URL generation logic
+   └─ utils.ts             # cn() helper (clsx + tailwind-merge)
 ```
 
 ---
@@ -79,6 +82,16 @@ bun dev
 ```
 
 Runs the app at `http://localhost:5173`.
+
+---
+
+## Testing
+
+```sh
+bun test
+```
+
+Tests live in `src/lib/providers.test.ts` and cover `buildURL` for every provider, param encoding, feature flags, temporary chat, and the URL length threshold. Use `bun:test` for any new tests. Test files are excluded from the TypeScript production build via `tsconfig.app.json`.
 
 ---
 
@@ -149,6 +162,9 @@ Each AI provider has its own URL structure and parameters:
 - Query parameters:
   - `q` → prompt text (required)
 - Uses `URL` and `URLSearchParams` for proper encoding.
+
+**Oversized URL fallback (`MAX_SAFE_URL_LENGTH = 7500`):**
+When the generated URL exceeds 7500 characters, `handleOpenInProvider` in `App.tsx` copies the raw prompt to the clipboard and opens the provider's `baseURL` instead. A hover tooltip on the Open button informs the user to paste once the chat loads. This mirrors the approach used by `resend/react-email` (PR #3404) and avoids HTTP 431 errors from servers that cap request line length.
 
 **Critical guidelines:**
 - Do not manually encode query strings - always use `URLSearchParams`.

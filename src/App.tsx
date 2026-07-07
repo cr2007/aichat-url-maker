@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { ModeToggle } from "@/components/mode-toggle"
 import { ExternalLink, MessageCircleDashed, ChevronDown } from "lucide-react"
-import { ThemeProvider } from './components/theme-provider'
+import { ThemeProvider } from "./components/theme-provider"
 import { PROVIDERS, getProvider } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn } from "@/lib/utils"
 
 const MAX_SAFE_URL_LENGTH = 7500
+
+const PILL_CLASS =
+  "flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary transition-all duration-150 text-sm font-medium"
 
 function PageContent() {
   const [prompt, setPrompt] = useState("")
@@ -19,15 +22,11 @@ function PageContent() {
   const [infoOpen, setInfoOpen] = useState(false)
 
   const provider = getProvider(selectedProvider)
-
-  const generatedURL = useCallback(() => {
-    if (!prompt.trim()) return ""
-    return provider.buildURL(prompt, selectedFeature, temporaryChat)
-  }, [prompt, selectedFeature, temporaryChat, provider])
-
-  const wordCount = prompt.split(/\s+/).filter(Boolean).length
-  const url = generatedURL()
+  const url = prompt.trim()
+    ? provider.buildURL(prompt, selectedFeature, temporaryChat)
+    : ""
   const isTooLong = url.length > MAX_SAFE_URL_LENGTH
+  const wordCount = prompt.split(/\s+/).filter(Boolean).length
 
   const handleOpenInProvider = useCallback(() => {
     if (!url) return
@@ -39,20 +38,17 @@ function PageContent() {
     }
   }, [url, isTooLong, prompt, provider])
 
-  const handleFeatureChange = (value: string) => {
-    setSelectedFeature(selectedFeature === (value as Feature) ? "" : (value as Feature))
-  }
+  const handleFeatureChange = useCallback((value: string) => {
+    setSelectedFeature((prev) => (prev === (value as Feature) ? "" : (value as Feature)))
+  }, [])
 
-  const handleProviderChange = (value: string) => {
+  const handleProviderChange = useCallback((value: string) => {
     if (!value) return
-    const newProvider = getProvider(value as ProviderId)
-    if (!newProvider.supportsFeatures) setSelectedFeature("")
-    if (!newProvider.supportsTemporaryChat) setTemporaryChat(false)
+    const next = getProvider(value as ProviderId)
+    if (!next.supportsFeatures) setSelectedFeature("")
+    if (!next.supportsTemporaryChat) setTemporaryChat(false)
     setSelectedProvider(value as ProviderId)
-  }
-
-  const pillClass =
-    "flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary transition-all duration-150 text-sm font-medium"
+  }, [])
 
   return (
     <main className="min-h-screen px-4 py-8">
@@ -85,7 +81,7 @@ function PageContent() {
               <ToggleGroupItem
                 key={p.id}
                 value={p.id}
-                className={pillClass}
+                className={PILL_CLASS}
                 aria-label={p.name}
               >
                 {p.icon}
@@ -134,7 +130,7 @@ function PageContent() {
                 <ToggleGroupItem
                   key={option.value}
                   value={option.value}
-                  className={pillClass}
+                  className={PILL_CLASS}
                   aria-label={option.label}
                 >
                   {option.icon}
@@ -202,7 +198,7 @@ function PageContent() {
           </div>
         )}
 
-        {/* Info section */}
+        {/* How it works */}
         <div className="border-t border-border pt-3 pb-1">
           <button
             type="button"
@@ -220,7 +216,7 @@ function PageContent() {
           {infoOpen && (
             <ul className="mt-3 text-xs text-muted-foreground space-y-1.5 list-disc list-inside animate-fade-in">
               <li>Select your preferred AI provider above</li>
-              <li>Enter any prompt you'd like to use</li>
+              <li>Enter any prompt you would like to use</li>
               <li>Optionally select features where supported</li>
               <li>Copy the generated URL to share with others</li>
               <li>Or click Open in ... to launch it immediately</li>
