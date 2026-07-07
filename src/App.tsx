@@ -9,6 +9,8 @@ import { PROVIDERS, getProvider } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn } from "@/lib/utils"
 
+const MAX_SAFE_URL_LENGTH = 7500
+
 function PageContent() {
   const [prompt, setPrompt] = useState("")
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>("chatgpt")
@@ -23,10 +25,19 @@ function PageContent() {
     return provider.buildURL(prompt, selectedFeature, temporaryChat)
   }, [prompt, selectedFeature, temporaryChat, provider])
 
-  const handleOpenInProvider = () => {
-    const url = generatedURL()
-    if (url) window.open(url, "_blank")
-  }
+  const wordCount = prompt.split(/\s+/).filter(Boolean).length
+  const url = generatedURL()
+  const isTooLong = url.length > MAX_SAFE_URL_LENGTH
+
+  const handleOpenInProvider = useCallback(() => {
+    if (!url) return
+    if (isTooLong) {
+      navigator.clipboard.writeText(prompt).catch(() => {})
+      window.open(provider.baseURL, "_blank")
+    } else {
+      window.open(url, "_blank")
+    }
+  }, [url, isTooLong, prompt, provider])
 
   const handleFeatureChange = (value: string) => {
     setSelectedFeature(selectedFeature === (value as Feature) ? "" : (value as Feature))
@@ -39,9 +50,6 @@ function PageContent() {
     if (!newProvider.supportsTemporaryChat) setTemporaryChat(false)
     setSelectedProvider(value as ProviderId)
   }
-
-  const wordCount = prompt.split(/\s+/).filter(Boolean).length
-  const url = generatedURL()
 
   const pillClass =
     "flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary transition-all duration-150 text-sm font-medium"
@@ -175,13 +183,23 @@ function PageContent() {
 
         {/* Open button */}
         {url && (
-          <Button
-            onClick={handleOpenInProvider}
-            className="w-full h-auto py-2.5 font-medium rounded-md transition-all duration-150 hover:opacity-90 active:scale-[0.99] animate-fade-in"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Open in {provider.name}
-          </Button>
+          <div className="relative group/open animate-fade-in">
+            <Button
+              onClick={handleOpenInProvider}
+              className="w-full h-auto py-2.5 font-medium rounded-md transition-all duration-150 hover:opacity-90 active:scale-[0.99]"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open in {provider.name}
+            </Button>
+            {isTooLong && (
+              <div
+                role="tooltip"
+                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-md opacity-0 transition-opacity duration-150 group-hover/open:opacity-100"
+              >
+                Prompt too long - copied to clipboard. Paste once opened.
+              </div>
+            )}
+          </div>
         )}
 
         {/* Info section */}
