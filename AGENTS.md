@@ -104,10 +104,17 @@ bun run build
 ```
 
 - Output directory: `dist/`
-- Deployment handled by `.github/workflows/deploy.yml`
-- When deployed to GitHub Pages, the Vite base path is set dynamically via environment variables.
+- When deployed to GitHub Pages, the Vite base path is set via the `GITHUB_PAGES` and `GITHUB_REPO` environment variables read in `vite.config.ts`. Do not hardcode or change that logic.
 
-Do not hardcode or change the base path logic in `vite.config.ts`.
+Three workflows live in `.github/workflows/`:
+
+| File | Trigger | What it does |
+|------|---------|--------------|
+| `test.yml` | push to `main`, all PRs | Installs deps and runs `bun test` |
+| `deploy.yml` | push to `main`, manual | Builds and deploys to GitHub Pages |
+| `assign-issue.yml` | issue comment | Handles `.take` / `.release` / `.assign` / `.unassign` commands |
+
+`deploy.yml` and `assign-issue.yml` delegate to reusable actions in `cr2007/actions@v1`. When updating CI, check that repository first before writing inline steps.
 
 ---
 
@@ -171,6 +178,28 @@ When the generated URL exceeds 7500 characters, `handleOpenInProvider` in `App.t
 - Each provider's `buildURL` function handles its specific format.
 - When adding new providers, follow the existing pattern in `src/lib/providers.tsx`.
 - Breaking these rules may silently invalidate generated URLs.
+
+---
+
+## Social Metadata and Favicons
+
+`index.html` contains the full set of social sharing and SEO meta tags. The
+canonical URL, Open Graph block, and Twitter Card block all point to the
+production site `https://cr2007.github.io/aichat-url-maker`. Do not change
+these URLs without a corresponding domain change.
+
+The following static image assets must be present in `public/` for full
+social-sharing and PWA support. They are not generated — place them there
+manually:
+
+| File | Size | Purpose |
+|------|------|---------|
+| `public/og-image.png` | 1774 × 887 | `og:image` / `twitter:image` |
+| `public/favicon.svg` | any (32 × 32 viewBox) | SVG favicon + PWA icon (already committed) |
+
+If `og-image.png` is missing, the build will still succeed but social previews
+will degrade gracefully. The SVG favicon doubles as the PWA manifest icon via
+`sizes: "any"`, so no separate PNG icon files are required.
 
 ---
 

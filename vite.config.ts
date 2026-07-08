@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const isGithubPages = process.env.GITHUB_PAGES === 'true';
-const repoName = process.env.GITHUB_REPO || ''; // 'chatgpt-url-maker'
+const repoName = process.env.GITHUB_REPO || '';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -22,17 +22,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,svg}'],
       },
       manifest: {
-        name: 'ChatGPT URL Generator',
-        short_name: 'ChatGPT URLs',
-        description: 'Create shareable ChatGPT URLs with prefilled prompts',
+        name: 'AI Prompt URL Generator',
+        short_name: 'AI Prompt URLs',
+        description: 'Create shareable AI chat URLs with prefilled prompts',
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',
         icons: [
           {
-            src: 'vite.svg',
+            src: 'favicon.svg',
             sizes: 'any',
             type: 'image/svg+xml',
+            purpose: 'any maskable',
           },
         ],
       },
