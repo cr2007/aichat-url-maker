@@ -67,8 +67,8 @@ src/
 │     ├─ toggle.tsx
 │     └─ toggle-group.tsx
 └─ lib/
-   ├─ providers.tsx        # AI provider configs and URL builders
-   ├─ providers.test.ts    # Unit tests for URL generation logic
+   ├─ providers.tsx        # Provider configs, URL builders, oversized-URL fallback logic
+   ├─ providers.test.ts    # Unit tests for URL generation and the fallback logic
    └─ utils.ts             # cn() helper (clsx + tailwind-merge)
 ```
 
@@ -91,7 +91,7 @@ Runs the app at `http://localhost:5173`.
 bun test
 ```
 
-Tests live in `src/lib/providers.test.ts` and cover `buildURL` for every provider, param encoding, feature flags, temporary chat, and the URL length threshold. Use `bun:test` for any new tests. Test files are excluded from the TypeScript production build via `tsconfig.app.json`.
+Tests live in `src/lib/providers.test.ts` and cover `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic. Use `bun:test` for any new tests. Test files are excluded from the TypeScript production build via `tsconfig.app.json`.
 
 ---
 
@@ -173,7 +173,23 @@ Each AI provider has its own URL structure and parameters:
 - Uses `URL` and `URLSearchParams` for proper encoding.
 
 **Oversized URL fallback (`MAX_SAFE_URL_LENGTH = 7500`):**
-When the generated URL exceeds 7500 characters, `handleOpenInProvider` in `App.tsx` copies the raw prompt to the clipboard and opens the provider's `baseURL` instead. A hover tooltip on the Open button informs the user to paste once the chat loads. This mirrors the approach used by `resend/react-email` (PR #3404) and avoids HTTP 431 errors from servers that cap request line length.
+`isUrlTooLong` and `resolveOpenAction` in `src/lib/providers.tsx` decide what
+"Open in {provider}" should do. When the generated URL exceeds 7500
+characters, `resolveOpenAction` returns the provider's bare `baseURL` and
+`shouldCopyPrompt: true`; `App.tsx`'s `handleOpenInProvider` then copies the
+raw prompt to the clipboard and opens that URL instead of the full one. The
+UI reflects this up front: the button label changes to "Copy Prompt & Open
+{provider}", and a persistent (non-hover) message explains the fallback, so
+it's visible on touch devices too. This mirrors the approach used by
+`resend/react-email` (PR #3404) and avoids HTTP 431 errors from servers that
+cap request line length.
+
+`handleOpenInProvider` also handles a blocked popup: if `window.open` returns
+`null`, App.tsx shows a message asking the user to allow popups and retry.
+The notice is derived state (the URL it was raised for, compared against the
+current URL) rather than a value that needs manual resetting, so it clears
+itself automatically once the prompt, provider, feature, or temporary-chat
+setting changes.
 
 **Critical guidelines:**
 - Do not manually encode query strings - always use `URLSearchParams`.

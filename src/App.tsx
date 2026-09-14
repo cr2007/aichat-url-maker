@@ -3,50 +3,78 @@ import { CopyableInput } from "@/components/copyable-input"
 import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { ModeToggle } from "@/components/mode-toggle"
-import { ExternalLink, MessageCircleDashed, ChevronDown } from "lucide-react"
+import { ExternalLink, MessageCircleDashed, ChevronDown, Copy } from "lucide-react"
 import { ThemeProvider } from "@/components/theme-provider"
-import { PROVIDERS, getProvider } from "@/lib/providers"
+import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn } from "@/lib/utils"
-
-const MAX_SAFE_URL_LENGTH = 7500
 
 const PILL_CLASS =
   "flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary transition-all duration-150 text-sm font-medium"
 
+/**
+ * Root page: prompt entry, provider/feature selection, and the generated
+ * URL output. Owns all form state; URL generation itself is delegated to
+ * each provider's `buildURL` (see `@/lib/providers`).
+ */
 function PageContent() {
   const [prompt, setPrompt] = useState("")
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>("chatgpt")
   const [selectedFeature, setSelectedFeature] = useState<Feature>("")
   const [temporaryChat, setTemporaryChat] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
+  // The URL a popup was blocked for, so the notice clears itself once the
+  // prompt, provider, feature, or temporary-chat setting changes and the
+  // next "Open" click becomes a fresh attempt. `null` means no block.
+  const [blockedURL, setBlockedURL] = useState<string | null>(null)
 
   const provider = getProvider(selectedProvider)
   const url = prompt.trim()
     ? provider.buildURL(prompt, selectedFeature, temporaryChat)
     : ""
-  const isTooLong = url.length > MAX_SAFE_URL_LENGTH
+  const isTooLong = isUrlTooLong(url)
   const wordCount = prompt.split(/\s+/).filter(Boolean).length
+  const popupBlocked = blockedURL !== null && blockedURL === url
 
+  /**
+   * Opens the generated URL in a new tab, or falls back to copying the
+   * prompt and opening the provider's homepage when the URL is too long.
+   */
   const handleOpenInProvider = useCallback(() => {
     if (!url) return
-    if (isTooLong) {
-      navigator.clipboard.writeText(prompt).catch(() => {})
-      window.open(provider.baseURL, "_blank")
-    } else {
-      window.open(url, "_blank")
-    }
-  }, [url, isTooLong, prompt, provider])
 
+    // Step 1: decide whether to open the URL directly, or copy the prompt
+    // and open the bare provider homepage instead.
+    const { targetURL, shouldCopyPrompt } = resolveOpenAction(url, provider)
+
+    // Step 2: copy the prompt first so it's ready to paste once the tab loads.
+    if (shouldCopyPrompt) navigator.clipboard.writeText(prompt).catch(() => {})
+
+    // Step 3: open the tab and remember the URL if the browser blocked it.
+    const opened = window.open(targetURL, "_blank")
+    setBlockedURL(opened ? null : url)
+  }, [url, prompt, provider])
+
+  /** Toggles a feature pill on, or off again if it was already selected. */
   const handleFeatureChange = useCallback((value: string) => {
     setSelectedFeature((prev) => (prev === (value as Feature) ? "" : (value as Feature)))
   }, [])
 
+  /**
+   * Switches the active provider, clearing feature/temporary-chat selections
+   * the new provider doesn't support.
+   */
   const handleProviderChange = useCallback((value: string) => {
     if (!value) return
+
+    // Step 1: resolve the newly selected provider's config.
     const next = getProvider(value as ProviderId)
+
+    // Step 2: drop any selections the new provider can't express.
     if (!next.supportsFeatures) setSelectedFeature("")
     if (!next.supportsTemporaryChat) setTemporaryChat(false)
+
+    // Step 3: commit the provider switch.
     setSelectedProvider(value as ProviderId)
   }, [])
 
@@ -108,8 +136,21 @@ function PageContent() {
             rows={4}
           />
           {prompt.length > 0 && (
-            <p className="text-[11px] text-muted-foreground text-right">
+            <p
+              className={cn(
+                "text-[11px] text-right",
+                isTooLong
+                  ? "text-amber-600 dark:text-amber-500 font-medium"
+                  : "text-muted-foreground"
+              )}
+            >
               {prompt.length} characters · {wordCount} words
+              {isTooLong && (
+                <>
+                  <br />
+                  Too long for a link. Will copy and open instead.
+                </>
+              )}
             </p>
           )}
         </div>
@@ -179,21 +220,29 @@ function PageContent() {
 
         {/* Open button */}
         {url && (
-          <div className="relative group/open animate-fade-in">
+          <div className="space-y-1.5 animate-fade-in">
             <Button
               onClick={handleOpenInProvider}
               className="w-full h-auto py-2.5 font-medium rounded-md transition-all duration-150 hover:shadow-[0_0_16px]! hover:shadow-chart-2/50! dark:hover:shadow-white/50! active:scale-[0.99]"
             >
-              <ExternalLink className="w-4 h-4" />
-              Open in {provider.name}
+              {isTooLong ? (
+                <Copy className="w-4 h-4" />
+              ) : (
+                <ExternalLink className="w-4 h-4" />
+              )}
+              {isTooLong ? `Copy Prompt & Open ${provider.name}` : `Open in ${provider.name}`}
             </Button>
             {isTooLong && (
-              <div
-                role="tooltip"
-                className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-md opacity-0 transition-opacity duration-150 group-hover/open:opacity-100"
-              >
-                Prompt too long - copied to clipboard. Paste once opened.
-              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                This prompt is too long to fit in a link. We'll copy it to
+                your clipboard and open {provider.name} so you can paste it in.
+              </p>
+            )}
+            {popupBlocked && (
+              <p role="alert" className="text-xs text-center text-destructive">
+                Your browser blocked the popup. Allow popups for this site, then
+                click the button again.
+              </p>
             )}
           </div>
         )}
@@ -228,6 +277,7 @@ function PageContent() {
   )
 }
 
+/** App root: wraps the page in the theme provider and a Suspense boundary. */
 function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
