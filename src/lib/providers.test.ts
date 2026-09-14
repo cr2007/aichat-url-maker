@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test"
-import { PROVIDERS, getProvider } from "./providers"
+import {
+  PROVIDERS,
+  getProvider,
+  isUrlTooLong,
+  resolveOpenAction,
+  MAX_SAFE_URL_LENGTH,
+} from "./providers"
 
 describe("getProvider", () => {
   test("resolves every declared provider by id", () => {
@@ -78,17 +84,47 @@ describe("Perplexity buildURL", () => {
 })
 
 describe("URL length safety threshold", () => {
-  test("a very long prompt produces a URL exceeding 7500 chars", () => {
+  test("a very long prompt produces a URL exceeding the safe length", () => {
     const url = getProvider("chatgpt").buildURL("a".repeat(8000), "", false)
-    expect(url.length).toBeGreaterThan(7500)
+    expect(url.length).toBeGreaterThan(MAX_SAFE_URL_LENGTH)
   })
 
-  test("a normal prompt stays under the 7500-char threshold", () => {
+  test("a normal prompt stays under the safe length", () => {
     const url = getProvider("chatgpt").buildURL(
       "Summarize the key points from this article.",
       "search",
       true,
     )
-    expect(url.length).toBeLessThan(7500)
+    expect(url.length).toBeLessThan(MAX_SAFE_URL_LENGTH)
+  })
+})
+
+describe("isUrlTooLong", () => {
+  test("returns false for a URL at the safe length", () => {
+    expect(isUrlTooLong("a".repeat(MAX_SAFE_URL_LENGTH))).toBe(false)
+  })
+
+  test("returns true for a URL one character over the safe length", () => {
+    expect(isUrlTooLong("a".repeat(MAX_SAFE_URL_LENGTH + 1))).toBe(true)
+  })
+})
+
+describe("resolveOpenAction", () => {
+  const provider = getProvider("chatgpt")
+
+  test("opens the generated URL directly when it's short enough", () => {
+    const url = provider.buildURL("hello", "", false)
+    expect(resolveOpenAction(url, provider)).toEqual({
+      targetURL: url,
+      shouldCopyPrompt: false,
+    })
+  })
+
+  test("falls back to the provider's base URL and a clipboard copy when the URL is too long", () => {
+    const url = provider.buildURL("a".repeat(8000), "", false)
+    expect(resolveOpenAction(url, provider)).toEqual({
+      targetURL: provider.baseURL,
+      shouldCopyPrompt: true,
+    })
   })
 })

@@ -160,6 +160,58 @@ export const PROVIDERS: ProviderConfig[] = [
   },
 ]
 
+/**
+ * Looks up a provider config by id.
+ *
+ * @param id - The provider id to resolve (e.g. `"chatgpt"`).
+ * @returns The matching {@link ProviderConfig}. Callers only ever pass ids
+ * sourced from {@link PROVIDERS} itself, so a match is guaranteed.
+ */
 export function getProvider(id: ProviderId): ProviderConfig {
   return PROVIDERS.find((p) => p.id === id)!
+}
+
+/**
+ * Maximum URL length, in characters, considered safe to open directly.
+ *
+ * Some servers reject request lines beyond roughly 8000 characters with an
+ * HTTP 431 error, so URLs longer than this fall back to a copy-and-open flow
+ * instead (see {@link resolveOpenAction}).
+ */
+export const MAX_SAFE_URL_LENGTH = 7500
+
+/**
+ * Checks whether a generated URL is too long to open safely.
+ *
+ * @param url - The fully-built provider URL to check.
+ * @returns `true` if `url` exceeds {@link MAX_SAFE_URL_LENGTH}.
+ */
+export function isUrlTooLong(url: string): boolean {
+  return url.length > MAX_SAFE_URL_LENGTH
+}
+
+/** Where {@link resolveOpenAction} decided to navigate, and whether the prompt needs a clipboard copy first. */
+export interface OpenAction {
+  /** The URL that should be opened in a new tab. */
+  targetURL: string
+  /** Whether the prompt text should be copied to the clipboard before opening. */
+  shouldCopyPrompt: boolean
+}
+
+/**
+ * Decides what "Open in {provider}" should do for a given prompt URL.
+ *
+ * When the URL is short enough, it opens directly. When it's too long to
+ * fit safely in a URL (see {@link isUrlTooLong}), the caller should copy the
+ * prompt to the clipboard instead and open the provider's bare homepage, so
+ * the user can paste the prompt in once the page loads.
+ *
+ * @param url - The fully-built provider URL for the current prompt.
+ * @param provider - The target provider config.
+ * @returns The URL to open, and whether the prompt should be copied first.
+ */
+export function resolveOpenAction(url: string, provider: ProviderConfig): OpenAction {
+  return isUrlTooLong(url)
+    ? { targetURL: provider.baseURL, shouldCopyPrompt: true }
+    : { targetURL: url, shouldCopyPrompt: false }
 }
