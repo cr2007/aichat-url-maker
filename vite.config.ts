@@ -44,5 +44,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  base: isGithubPages ? `/${repoName}/` : ''
+  base: isGithubPages ? `/${repoName}/` : '',
+  server: {
+    // Vite blocks requests with an unrecognized Host header by default.
+    // This allowlists Cloudflare Quick Tunnel hostnames so `bun dev` can be
+    // shared for testing via `cloudflared tunnel --url http://localhost:5173`.
+    allowedHosts: ['.trycloudflare.com'],
+  },
 })
