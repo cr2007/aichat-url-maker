@@ -231,6 +231,7 @@ will degrade gracefully. The SVG favicon doubles as the PWA manifest icon via
 - Overengineering abstractions or state management.
 - Making provider-specific changes that break the abstraction layer.
 - Hardcoding URLs or query parameters outside of provider configurations.
+- Committing local Claude Code tooling under `.claude/` (skills, settings) - these are personal workflow helpers, not project conventions, and are gitignored.
 
 ---
 
