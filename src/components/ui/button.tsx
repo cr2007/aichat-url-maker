@@ -4,8 +4,14 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// Hover feedback is a colored glow (box-shadow), not an opacity fade: fading
+// the whole button dims its text along with the background, which reads as
+// "disabled" rather than "hovered," especially in dark mode. A caller can
+// override the glow color per instance via `className` (e.g. the primary
+// "Open in {provider}" button uses a different hue so it reads as distinct
+// from secondary buttons) since cva merges `className` in last.
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all hover:shadow-[0_0_12px] hover:shadow-primary/40 disabled:pointer-events-none disabled:opacity-50 disabled:hover:shadow-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
@@ -36,6 +42,7 @@ const buttonVariants = cva(
   }
 )
 
+/** Styled button. Renders as a `<Slot>` instead of `<button>` when `asChild` is set. */
 function Button({
   className,
   variant = "default",

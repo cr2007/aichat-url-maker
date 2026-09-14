@@ -137,6 +137,8 @@ Three workflows live in `.github/workflows/`:
 - Do not add new global CSS files.
 - Respect existing design tokens and CSS variables.
 - Prefer composition over custom styling.
+- `hover:` is redefined in `index.css` to gate on `(any-hover: hover)` instead of Tailwind's default `(hover: hover)`, so stylus input (S Pen, Apple Pencil) can trigger hover styles on primarily-touch devices. Don't reintroduce plain `(hover: hover)` gating locally.
+- `ToggleGroupItem` (`toggle-group.tsx`) applies an unconditional `data-[spacing=0]:shadow-none` that lands after most utility classes in the compiled stylesheet, silently canceling any `hover:shadow-*` glow at equal specificity. `toggle.tsx`'s hover shadow utilities use the `!` important modifier to beat it — keep that `!` if you touch those classes, and expect to need it again for any other `box-shadow` hover effect on a `ToggleGroupItem`.
 
 ### UI Components
 - Reuse components in `src/components/ui/`.

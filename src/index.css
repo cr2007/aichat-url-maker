@@ -3,6 +3,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Use any-hover instead of Tailwind's default hover so stylus input
+   (S Pen, Apple Pencil) can trigger hover styles on primarily-touch
+   devices, without causing sticky hover on plain finger taps. */
+@custom-variant hover {
+  @media (any-hover: hover) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }

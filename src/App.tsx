@@ -182,7 +182,7 @@ function PageContent() {
           <div className="relative group/open animate-fade-in">
             <Button
               onClick={handleOpenInProvider}
-              className="w-full h-auto py-2.5 font-medium rounded-md transition-all duration-150 hover:opacity-90 active:scale-[0.99]"
+              className="w-full h-auto py-2.5 font-medium rounded-md transition-all duration-150 hover:shadow-[0_0_16px]! hover:shadow-chart-2/50! dark:hover:shadow-white/50! active:scale-[0.99]"
             >
               <ExternalLink className="w-4 h-4" />
               Open in {provider.name}
