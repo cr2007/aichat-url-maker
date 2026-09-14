@@ -46,7 +46,7 @@ function CopyableInput({ value, onCopy, className, ...props }: CopyableInputProp
         type="button"
         aria-label="Copy to clipboard"
         className={cn(
-          "absolute right-2 top-2 rounded-md p-1.5 transition-colors",
+          "absolute right-1.5 top-1.5 rounded-md p-2.5 transition-colors",
           "text-muted-foreground hover:text-foreground hover:bg-muted",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         )}
