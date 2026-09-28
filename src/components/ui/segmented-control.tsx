@@ -57,7 +57,7 @@ const SEGMENT_CLASS = cn(
   // utility here would outrank the drag rules, because the utilities layer is
   // above the components layer.
   "text-[0.9375rem] font-medium select-none",
-  "transition-[color,transform] duration-150",
+  "transition-[color,transform,scale] duration-150",
   "active:scale-[0.97] motion-reduce:active:scale-100",
   "focus-ring",
   "[&_svg]:size-[1.125rem] [&_svg]:shrink-0"

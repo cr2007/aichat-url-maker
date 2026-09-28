@@ -67,7 +67,7 @@ function CopyableInput({ value, onCopy, className, ...props }: CopyableInputProp
         aria-label="Copy link"
         className={cn(
           "absolute right-1 top-1 grid size-11 place-items-center rounded-md",
-          "transition-[color,background-color,transform] duration-150",
+          "transition-[color,background-color,transform,scale] duration-150",
           "active:scale-[0.97] motion-reduce:active:scale-100",
           failed ? "text-destructive" : "text-muted-foreground hover:text-foreground hover:bg-muted",
           "focus-ring",

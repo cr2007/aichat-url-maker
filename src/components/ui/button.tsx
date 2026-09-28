@@ -24,7 +24,9 @@ import { cn } from "@/lib/utils"
 const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
-    "transition-[background-color,box-shadow,transform] duration-150",
+    // `scale` is named because Tailwind v4 compiles `scale-*` to the
+    // independent `scale` property, which `transform` does not cover.
+    "transition-[background-color,box-shadow,transform,scale] duration-150",
     "active:scale-[0.98] active:shadow-none motion-reduce:active:scale-100",
     "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
     "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
