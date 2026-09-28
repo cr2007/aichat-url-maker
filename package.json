@@ -13,9 +13,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && bun run scripts/prerender.tsx",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:nossg": "tsc -b && vite build"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
