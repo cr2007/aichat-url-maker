@@ -128,3 +128,50 @@ describe("resolveOpenAction", () => {
     })
   })
 })
+
+describe("feature options", () => {
+  const features = PROVIDERS.flatMap((provider) => provider.features)
+
+  test("every feature has a description for its tooltip", () => {
+    for (const feature of features) {
+      expect(feature.description.length).toBeGreaterThan(0)
+      expect(feature.description.trim()).toBe(feature.description)
+    }
+  })
+
+  test("a description is one sentence and ends with a full stop", () => {
+    for (const feature of features) {
+      expect(feature.description).toMatch(/\.$/)
+    }
+  })
+
+  test("every feature has a label and an icon", () => {
+    for (const feature of features) {
+      expect(feature.label.length).toBeGreaterThan(0)
+      expect(feature.icon).toBeTruthy()
+    }
+  })
+
+  test("values and labels are unique inside a provider", () => {
+    for (const provider of PROVIDERS) {
+      const values = provider.features.map((f) => f.value)
+      const labels = provider.features.map((f) => f.label)
+      expect(new Set(values).size).toBe(values.length)
+      expect(new Set(labels).size).toBe(labels.length)
+    }
+  })
+
+  test("only a provider that declares features has any", () => {
+    for (const provider of PROVIDERS) {
+      if (!provider.supportsFeatures) expect(provider.features).toHaveLength(0)
+      else expect(provider.features.length).toBeGreaterThan(0)
+    }
+  })
+
+  test("a feature value never reaches the URL of a provider without features", () => {
+    for (const provider of PROVIDERS) {
+      if (provider.supportsFeatures) continue
+      expect(provider.buildURL("hi", "search", false)).not.toContain("hints")
+    }
+  })
+})

@@ -12,9 +12,14 @@ export type ProviderId = "chatgpt" | "claude" | "perplexity"
 export type Feature = "search" | "image" | "think" | "research" | "shopping" | "study" | "canvas" | ""
 
 export interface FeatureOption {
+  /** The visible text, and the accessible name. */
   label: string
+  /** The value that goes into the `hints` parameter. */
   value: Feature
+  /** A decorative mark. The label gives the name. */
   icon: React.ReactNode
+  /** One line on what the feature does. A tooltip shows it. */
+  description: string
 }
 
 export interface ProviderConfig {
@@ -99,13 +104,48 @@ function ClaudeIncognitoIcon({ className }: { className?: string }) {
 }
 
 const CHATGPT_FEATURES: FeatureOption[] = [
-  { label: "Search",            value: "search",   icon: <Search className="w-4 h-4" /> },
-  { label: "Image generation",  value: "image",    icon: <ImageIcon className="w-4 h-4" /> },
-  { label: "Thinking",          value: "think",    icon: <Lightbulb className="w-4 h-4" /> },
-  { label: "Deep Research",     value: "research", icon: <BookOpen className="w-4 h-4" /> },
-  { label: "Shopping Research", value: "shopping", icon: <ShoppingCart className="w-4 h-4" /> },
-  { label: "Study and Learn",   value: "study",    icon: <GraduationCap className="w-4 h-4" /> },
-  { label: "Canvas",            value: "canvas",   icon: <PenTool className="w-4 h-4" /> },
+  {
+    label: "Search",
+    value: "search",
+    icon: <Search className="w-4 h-4" />,
+    description: "Looks for current information on the web before it answers.",
+  },
+  {
+    label: "Image generation",
+    value: "image",
+    icon: <ImageIcon className="w-4 h-4" />,
+    description: "Makes a picture from the prompt.",
+  },
+  {
+    label: "Thinking",
+    value: "think",
+    icon: <Lightbulb className="w-4 h-4" />,
+    description: "Takes longer and works through the problem step by step.",
+  },
+  {
+    label: "Deep Research",
+    value: "research",
+    icon: <BookOpen className="w-4 h-4" />,
+    description: "Reads many sources and writes a report with citations.",
+  },
+  {
+    label: "Shopping Research",
+    value: "shopping",
+    icon: <ShoppingCart className="w-4 h-4" />,
+    description: "Compares products and shows prices.",
+  },
+  {
+    label: "Study and Learn",
+    value: "study",
+    icon: <GraduationCap className="w-4 h-4" />,
+    description: "Teaches the topic instead of giving only the answer.",
+  },
+  {
+    label: "Canvas",
+    value: "canvas",
+    icon: <PenTool className="w-4 h-4" />,
+    description: "Opens a side panel to write or edit with the assistant.",
+  },
 ]
 
 export const PROVIDERS: ProviderConfig[] = [
