@@ -4,20 +4,40 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// Hover feedback is a colored glow (box-shadow), not an opacity fade: fading
-// the whole button dims its text along with the background, which reads as
-// "disabled" rather than "hovered," especially in dark mode. A caller can
-// override the glow color per instance via `className` (e.g. the primary
-// "Open in {provider}" button uses a different hue so it reads as distinct
-// from secondary buttons) since cva merges `className` in last.
+/**
+ * The classes for a button.
+ *
+ * Hover does not fade the button. A fade dims the label with the background,
+ * and the button then looks disabled, especially in dark mode. Each variant
+ * changes its own fill instead, and a filled variant also lifts.
+ *
+ * A lift is a shadow below the button, in the colour of that button. Do not
+ * use a symmetric glow, and do not use a colour from a different part of the
+ * palette. Such a shadow makes a halo around the button.
+ *
+ * Every variant has a press state. HIG buttons.md > Best practices: "Always
+ * include a press state for a custom button."
+ *
+ * The focus indicator is `--focus-ring` with an offset, not `--ring`.
+ * `--ring` is the accent colour, so it disappears on a filled button.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all hover:shadow-[0_0_12px] hover:shadow-primary/40 disabled:pointer-events-none disabled:opacity-50 disabled:hover:shadow-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
+    "transition-[background-color,box-shadow,transform] duration-150",
+    "active:scale-[0.98] active:shadow-none motion-reduce:active:scale-100",
+    "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
+    "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
+    "focus-ring",
+    "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  ],
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_4px_12px_-4px] hover:shadow-primary/50",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-destructive text-white hover:bg-destructive/90 hover:shadow-[0_4px_12px_-4px] hover:shadow-destructive/50 dark:bg-destructive/60",
         outline:
           "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
         secondary:

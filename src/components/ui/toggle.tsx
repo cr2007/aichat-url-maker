@@ -4,13 +4,19 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// The trailing `!` on the hover shadow utilities forces `!important`. It's
-// required because ToggleGroupItem (see toggle-group.tsx) also applies an
-// unconditional `data-[spacing=0]:shadow-none`, which compiles later in the
-// generated stylesheet and would otherwise always win at equal specificity,
-// canceling the glow regardless of hover state.
+/**
+ * The classes for a toggle.
+ *
+ * The hover shadow is below the toggle, in the accent colour. Do not use a
+ * symmetric shadow. A symmetric shadow makes a halo around the toggle.
+ *
+ * The `!` on the hover shadow classes sets `!important`. `ToggleGroupItem` in
+ * `toggle-group.tsx` applies `data-[spacing=0]:shadow-none` at all times. That
+ * class is later in the stylesheet and has the same specificity, so it removes
+ * the shadow without the `!`.
+ */
 const toggleVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium hover:bg-muted hover:shadow-[0_0_10px]! hover:shadow-primary/40! disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none transition-[color,box-shadow] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap",
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium hover:bg-muted hover:shadow-[0_2px_8px_-3px]! hover:shadow-primary/45! active:scale-[0.98] active:shadow-none motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 focus-ring transition-[color,background-color,box-shadow,transform] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap",
   {
     variants: {
       variant: {

@@ -1,11 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* The appearance follows the system. The app has no appearance control.
+   HIG dark-mode.md > Best practices: "Avoid offering an app-specific
+   appearance setting." */
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
-/* Use any-hover instead of Tailwind's default hover so stylus input
-   (S Pen, Apple Pencil) can trigger hover styles on primarily-touch
-   devices, without causing sticky hover on plain finger taps. */
+/* This variant uses any-hover, not the Tailwind default hover. A stylus can
+   then show hover styles on a touch device. A finger tap does not. */
 @custom-variant hover {
   @media (any-hover: hover) {
     &:hover {
@@ -23,16 +25,6 @@
   0%   { transform: scale(0.7); }
   50%  { transform: scale(1.2); }
   100% { transform: scale(1); }
-}
-
-@keyframes spin-hue {
-  0%   { transform: rotate(0deg);   color: oklch(0.72 0.22 0); }
-  16%  { transform: rotate(60deg);  color: oklch(0.75 0.20 60); }
-  33%  { transform: rotate(120deg); color: oklch(0.72 0.22 140); }
-  50%  { transform: rotate(180deg); color: oklch(0.72 0.22 195); }
-  66%  { transform: rotate(240deg); color: oklch(0.72 0.20 264); }
-  83%  { transform: rotate(300deg); color: oklch(0.72 0.22 310); }
-  100% { transform: rotate(360deg); color: oklch(0.72 0.22 360); }
 }
 
 @theme inline {
@@ -74,11 +66,18 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-focus-ring: var(--focus-ring);
+  --color-warning: var(--warning);
+  --color-segment-track: var(--segment-track);
+  --color-segment-thumb: var(--segment-thumb);
+  --color-segment-thumb-glass: var(--segment-thumb-glass);
   --animate-fade-in: fade-in 0.15s ease-out;
-  --animate-spin-hue: spin-hue 0.65s ease-out;
 }
 
 :root {
+  /* The browser draws the scrollbars and the form controls in the system
+     appearance. No code sets a `.dark` class. */
+  color-scheme: light dark;
   --radius: 0.5rem;
   --bg-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, oklch(0.88 0.06 264 / 0.45) 0%, transparent 100%);
   --background: oklch(1 0 0);
@@ -99,6 +98,14 @@
   --border: oklch(0.80 0 0);
   --input: oklch(0.80 0 0);
   --ring: oklch(0.53 0.18 264);
+  /* The focus indicator. It must not be the accent color. A blue ring on the
+     blue primary button is not visible. This value contrasts with every
+     surface in the app, including the filled buttons. */
+  --focus-ring: oklch(0.145 0 0);
+  /* The oversized-prompt warning. The old `text-amber-600` measured 3.06:1 on
+     the page background, below the 4.5:1 that WCAG AA needs for this size.
+     A warning is not an error, so it does not use --destructive. */
+  --warning: oklch(0.527 0.10 60);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -112,41 +119,205 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.53 0.18 264);
+  /* The segmented control. The indicator is above the track in both
+     appearances. In dark mode the indicator is therefore lighter than the
+     track. HIG: base colors are dimmer and elevated colors are brighter.
+     Do not use --background here. That value inverts the effect. */
+  --segment-track: oklch(0.49 0.03 264 / 0.09);
+  --segment-thumb: oklch(1 0 0);
+  /* Liquid Glass. These values apply to the indicator during a press only.
+     HIG materials.md > Liquid Glass keeps glass out of the content layer.
+     There is one exception: "controls in the content layer with a transient
+     interactive element like sliders and toggles". Use the regular variant.
+     The clear variant is for components above photos and videos.
+
+     The primary color tints the glass during a drag only. HIG color.md says
+     to put color on the background, not on the text, and to keep a tinted
+     background on one control. The "Open in" button is that control at rest,
+     so this tint must not stay after the drag. */
+  --segment-thumb-glass: oklch(0.78 0.08 264 / 0.45);
+  --segment-thumb-specular: oklch(1 0 0 / 0.95);
+  --segment-thumb-underglow: oklch(0.53 0.18 264 / 0.30);
+  --segment-thumb-glow: oklch(0.53 0.18 264 / 0.34);
+  --segment-thumb-sheen: linear-gradient(
+    to bottom,
+    oklch(1 0 0 / 0.78) 0%,
+    oklch(1 0 0 / 0.22) 48%,
+    oklch(0.53 0.18 264 / 0.10) 100%
+  );
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --bg-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, oklch(0.22 0.07 264 / 0.5) 0%, transparent 100%);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.67 0.15 264);
-  --primary-foreground: oklch(0.10 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.67 0.15 264);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.67 0.15 264);
-  --sidebar-primary-foreground: oklch(0.10 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.67 0.15 264);
+@media (prefers-color-scheme: dark) {
+  :root {
+      --background: oklch(0.145 0 0);
+      --bg-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, oklch(0.22 0.07 264 / 0.5) 0%, transparent 100%);
+      --foreground: oklch(0.985 0 0);
+      --card: oklch(0.205 0 0);
+      --card-foreground: oklch(0.985 0 0);
+      --popover: oklch(0.205 0 0);
+      --popover-foreground: oklch(0.985 0 0);
+      --primary: oklch(0.67 0.15 264);
+      --primary-foreground: oklch(0.10 0 0);
+      --secondary: oklch(0.269 0 0);
+      --secondary-foreground: oklch(0.985 0 0);
+      --muted: oklch(0.269 0 0);
+      --muted-foreground: oklch(0.708 0 0);
+      --accent: oklch(0.269 0 0);
+      --accent-foreground: oklch(0.985 0 0);
+      --destructive: oklch(0.704 0.191 22.216);
+      --border: oklch(1 0 0 / 10%);
+      --input: oklch(1 0 0 / 15%);
+      --ring: oklch(0.67 0.15 264);
+      --focus-ring: oklch(0.985 0 0);
+      --warning: oklch(0.692 0.14 70);
+      --chart-1: oklch(0.488 0.243 264.376);
+      --chart-2: oklch(0.696 0.17 162.48);
+      --chart-3: oklch(0.769 0.188 70.08);
+      --chart-4: oklch(0.627 0.265 303.9);
+      --chart-5: oklch(0.645 0.246 16.439);
+      --sidebar: oklch(0.205 0 0);
+      --sidebar-foreground: oklch(0.985 0 0);
+      --sidebar-primary: oklch(0.67 0.15 264);
+      --sidebar-primary-foreground: oklch(0.10 0 0);
+      --sidebar-accent: oklch(0.269 0 0);
+      --sidebar-accent-foreground: oklch(0.985 0 0);
+      --sidebar-border: oklch(1 0 0 / 10%);
+      --sidebar-ring: oklch(0.67 0.15 264);
+      --segment-track: oklch(1 0 0 / 0.06);
+      --segment-thumb: oklch(0.32 0 0);
+      --segment-thumb-glass: oklch(0.62 0.05 264 / 0.42);
+      --segment-thumb-specular: oklch(1 0 0 / 0.34);
+      --segment-thumb-underglow: oklch(0.67 0.15 264 / 0.34);
+      --segment-thumb-glow: oklch(0.67 0.15 264 / 0.38);
+      --segment-thumb-sheen: linear-gradient(
+        to bottom,
+        oklch(1 0 0 / 0.22) 0%,
+        oklch(1 0 0 / 0.05) 45%,
+        oklch(0.67 0.15 264 / 0.12) 100%
+      );
+  }
+}
+
+@layer components {
+/*
+ * The focus indicator.
+ *
+ * Put this class on every control that can take the focus. The indicator uses
+ * `--focus-ring`, not `--ring`. `--ring` is the accent colour, and it
+ * disappears on a control that the accent colour fills.
+ *
+ * The offset puts a gap between the control and the outline. The outline is
+ * therefore next to the page background, not next to the fill of the control.
+ */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * The indicator of the segmented control.
+ *
+ * At rest the indicator has a solid surface. During a press it becomes
+ * Liquid Glass: it is translucent, it blurs and saturates the background, and
+ * it gets a bright top edge, a tinted bottom edge and an outer glow.
+ *
+ * The track is translucent. The page gradient is therefore behind the glass,
+ * and the blur has an image to work on. A solid track gives no glass effect.
+ *
+ * Do not apply the glass at rest. Do not apply it to a different element.
+ * See `materials.md > Liquid Glass`.
+ */
+.segment-indicator {
+  background-color: var(--segment-thumb);
+  background-image: none;
+  box-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.08);
+  transition:
+    background-color 220ms ease-out,
+    box-shadow 220ms ease-out,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.segment-indicator[data-active="true"] {
+  background-color: var(--segment-thumb-glass);
+  background-image: var(--segment-thumb-sheen);
+  -webkit-backdrop-filter: blur(14px) saturate(200%) brightness(1.06);
+  backdrop-filter: blur(14px) saturate(200%) brightness(1.06);
+  box-shadow:
+    /* The light on the top edge of the glass. */
+    inset 0 1px 0 0 var(--segment-thumb-specular),
+    /* The tinted light that the glass bends to its bottom edge. */
+    inset 0 -6px 12px -6px var(--segment-thumb-underglow),
+    /* The glow and the shadow that lift the glass off the track. */
+    0 0 16px 0 var(--segment-thumb-glow),
+    0 8px 20px -8px oklch(0 0 0 / 0.32);
+}
+
+/* The indicator follows the pointer exactly during a drag. Remove the
+   transform transition. The indicator would be late without this rule. */
+.segment-indicator[data-dragging="true"] {
+  transition:
+    background-color 220ms ease-out,
+    box-shadow 220ms ease-out;
+  will-change: transform;
+}
+
+/*
+ * The label of a segment during a drag.
+ *
+ * The indicator is between two segments during a drag. The segment below the
+ * indicator is the candidate. Its label becomes brighter and its icon becomes
+ * larger. A person can then see the result before the release.
+ *
+ * The size change is necessary. Color alone does not show a state. See
+ * `accessibility.md > Vision`.
+ */
+.segment-item {
+  color: var(--muted-foreground);
+}
+
+.segment-item[data-state="on"] {
+  color: var(--foreground);
+}
+
+.segment-item svg {
+  transition: transform 180ms ease-out;
+}
+
+/* During a drag the candidate is bright and every other segment is dim. This
+   rule must also dim the selected segment. The selection does not change
+   until the release. */
+.segment-track[data-dragging="true"] .segment-item {
+  color: var(--muted-foreground);
+}
+
+.segment-track[data-dragging="true"] .segment-item[data-candidate="true"] {
+  color: var(--foreground);
+}
+
+.segment-item[data-candidate="true"] svg {
+  transform: scale(1.14);
+}
+
+/* Reduced transparency: use the solid surface. Some browsers do not support
+   this query. The glass color is therefore opaque enough to keep the label
+   legible without this rule. */
+@media (prefers-reduced-transparency: reduce) {
+  .segment-indicator[data-active="true"] {
+    background-color: var(--segment-thumb);
+    background-image: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Increased contrast: give the indicator a solid edge. The translucent
+   surface alone does not separate it from the track. */
+@media (prefers-contrast: more) {
+  .segment-indicator {
+    outline: 1px solid var(--foreground);
+    outline-offset: -1px;
+  }
+}
 }
 
 @layer base {
@@ -158,5 +329,19 @@
     font-family: 'Geist', system-ui, -apple-system, sans-serif;
     background-image: var(--bg-gradient);
     background-attachment: fixed;
+  }
+
+  /* Reduced motion: remove the animations and the transitions. See
+     `accessibility.md > Cognitive`. Use the Tailwind `motion-reduce:` variant
+     for a specific component. This rule is the minimum for all elements. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
