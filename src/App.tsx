@@ -2,8 +2,10 @@ import { Suspense, useState, useCallback, useEffect, useRef } from "react"
 import { CopyableInput } from "@/components/copyable-input"
 import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Toggle } from "@/components/ui/toggle"
 import { SegmentedControl } from "@/components/ui/segmented-control"
-import { MessageCircleDashed, ChevronDown, Copy, Ban, Volume2, VolumeX } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { MessageCircleDashed, ChevronDown, Copy, Volume2, VolumeX, Check } from "lucide-react"
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn, countWords } from "@/lib/utils"
@@ -13,15 +15,6 @@ import { useSound, useSoundPreference } from "@/lib/use-sound"
 /** The classes for a section label. The rem unit follows the browser text size. */
 const SECTION_LABEL_CLASS = "block text-[0.8125rem] font-medium text-muted-foreground"
 
-/**
- * The value of the "None" feature pill.
- *
- * The group is a radio group, so one pill is always selected. Radix treats ""
- * as "nothing selected", so None needs a real value of its own. The handler
- * maps it back to "" for the URL.
- */
-const NONE_FEATURE = "__none__"
-
 /** The providers, as options for the segmented control. */
 const PROVIDER_OPTIONS = PROVIDERS.map((provider) => ({
   value: provider.id,
@@ -30,20 +23,35 @@ const PROVIDER_OPTIONS = PROVIDERS.map((provider) => ({
 }))
 
 /**
- * The classes for the feature grid.
+ * The classes for the feature row.
  *
- * A wrapping row left the last pill alone on a third row. A grid gives rows
- * of equal length at every width: two columns on a phone, four above 560px,
- * which is eight pills in two rows of four.
- *
- * `items-stretch` gives every pill in a row the same height, so a label that
- * wraps to two lines does not make its row ragged.
+ * Flex wrap, not a grid. A grid keeps its columns, so a part-filled last row
+ * stays on the left. Flex centres every row, including the last.
  */
-const FEATURE_GRID_CLASS =
-  "grid w-full grid-cols-2 min-[560px]:grid-cols-4 items-stretch gap-1.5 bg-transparent p-0"
+const FEATURE_ROW_CLASS = "flex w-full flex-wrap justify-center gap-1.5 bg-transparent p-0"
+
+/**
+ * The classes for the temporary chat row.
+ *
+ * The whole row is the control, so a press anywhere in it toggles the
+ * setting. HIG toggles.md: outside a list, use a button that behaves like a
+ * toggle, not a switch.
+ *
+ * This row reads `data-state`, which Radix sets. The feature pills cannot,
+ * because a tooltip wraps each one and writes its own `data-state` over the
+ * toggle's. They read `aria-pressed` instead.
+ */
+const TEMPORARY_CHAT_CLASS =
+  "flex h-auto w-full items-center gap-3 rounded-md border border-border bg-secondary px-3 py-2.5 text-left whitespace-normal " +
+  "transition-[color,background-color,border-color,box-shadow,transform] duration-200 " +
+  "data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:text-foreground dark:data-[state=on]:bg-primary/10"
 
 /**
  * The classes for a feature pill.
+ *
+ * The selected state reads `aria-pressed`, not `data-state`. A tooltip wraps
+ * each pill, and `TooltipTrigger asChild` writes its own `data-state` over
+ * the toggle's, which silently removed the selected fill.
  *
  * `whitespace-normal h-auto` replaces the fixed height and the nowrap rule
  * from `toggleVariants`, so a long label wraps inside its cell instead of
@@ -54,7 +62,7 @@ const FEATURE_GRID_CLASS =
  * height and the padding when a label wraps.
  */
 const PILL_CLASS =
-  "flex w-full items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary transition-[background-color,color,border-color,box-shadow,transform] duration-150 text-sm font-medium"
+  "flex items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 max-w-full whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary transition-[background-color,color,border-color,box-shadow,transform] duration-150 text-sm font-medium"
 
 /**
  * Turns the interface sounds on and off.
@@ -175,18 +183,16 @@ function PageContent() {
   }, [url, prompt, provider, playOpen])
 
   /**
-   * Selects a feature.
+   * Selects a feature, or clears it.
    *
-   * A press on the selected pill clears the feature, and the None pill does
-   * the same. Radix reports "" for the first of those.
+   * The pills are toggle buttons, so a press on the selected pill clears the
+   * choice. Radix reports "" for that press.
    *
-   * @param value - The feature from the pill group, "" for a repeat press, or
-   * NONE_FEATURE for the None pill.
+   * @param value - The feature, or "" to clear it.
    */
   const handleFeatureChange = useCallback((value: string) => {
-    // Step 1.1: an empty value or the None pill both clear the feature. The
-    // group then shows None as selected, so one pill is always selected.
-    setSelectedFeature(!value || value === NONE_FEATURE ? "" : (value as Feature))
+    // Step 1.1: "" means the person pressed the selected pill again.
+    setSelectedFeature(value as Feature)
   }, [])
 
   /**
@@ -278,53 +284,80 @@ function PageContent() {
         {provider.supportsFeatures && (
           <div id="feature-section" className="space-y-2">
             <span id="feature-label" className={SECTION_LABEL_CLASS}>Features</span>
-            {/* Radix gives each item role="radio" but leaves the root at
-                role="group". A radio outside a radiogroup reports no set size,
-                so assistive technology cannot say "3 of 8". */}
+            {/* Radix marks each item role="radio" for a single group, but a
+                radio cannot be unchecked. These are toggle buttons: one at a
+                time, and a second press clears the choice. aria-pressed says
+                so, and aria-checked is cleared. */}
             <ToggleGroup
               id="feature-picker"
               type="single"
-              role="radiogroup"
-              value={selectedFeature || NONE_FEATURE}
+              value={selectedFeature}
               onValueChange={handleFeatureChange}
               aria-labelledby="feature-label"
-              className={FEATURE_GRID_CLASS}
+              className={FEATURE_ROW_CLASS}
             >
-              <ToggleGroupItem value={NONE_FEATURE} className={PILL_CLASS}>
-                <Ban className="w-4 h-4" />
-                None
-              </ToggleGroupItem>
-              {provider.features.map((option) => (
-                // No aria-label: the visible text is already the name, and a
-                // duplicate makes screen readers announce the pill twice.
-                <ToggleGroupItem
-                  key={option.value}
-                  value={option.value}
-                  className={PILL_CLASS}
-                >
-                  {option.icon}
-                  {option.label}
-                </ToggleGroupItem>
-              ))}
+              {provider.features.map((option) => {
+                const selected = selectedFeature === option.value
+                return (
+                  <Tooltip key={option.value}>
+                    <TooltipTrigger asChild>
+                      <ToggleGroupItem
+                        value={option.value}
+                        className={PILL_CLASS}
+                        role="button"
+                        aria-pressed={selected}
+                        aria-checked={undefined}
+                        aria-describedby={`feature-${option.value}-description`}
+                      >
+                        {option.icon}
+                        {option.label}
+                      </ToggleGroupItem>
+                    </TooltipTrigger>
+                    <TooltipContent id={`feature-${option.value}-description`}>
+                      {option.description}
+                    </TooltipContent>
+                  </Tooltip>
+                )
+              })}
             </ToggleGroup>
           </div>
         )}
 
         {/* Temporary chat */}
         {provider.supportsTemporaryChat && (
-          <div id="temporary-chat-section" className="flex justify-center">
-            <Button
-              id="temporary-chat-toggle"
-              type="button"
-              variant={temporaryChat ? "default" : "outline"}
-              onClick={() => setTemporaryChat((prev) => !prev)}
-              className="min-h-11 px-4"
-              aria-pressed={temporaryChat}
-            >
-              {provider.temporaryChatIcon ?? <MessageCircleDashed className="w-4 h-4" />}
-              Temporary Chat
-            </Button>
-          </div>
+          <Toggle
+            id="temporary-chat-section"
+            pressed={temporaryChat}
+            onPressedChange={setTemporaryChat}
+            className={TEMPORARY_CHAT_CLASS}
+          >
+            <span className="flex flex-1 flex-col gap-1 text-left">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                {provider.temporaryChatIcon ?? <MessageCircleDashed className="size-4" />}
+                Temporary chat
+              </span>
+              {/* One line on the on state. A person infers the off state. */}
+              <span className="text-[0.8125rem] font-normal text-muted-foreground">
+                Keeps this chat out of your {provider.name} history.
+              </span>
+            </span>
+            {/* The check is the second cue. Colour alone does not show a
+                state. It is decorative: aria-pressed carries the state. */}
+            {/* The tick grows in from 0.75, not from 0: nothing appears out
+                of nothing. ease-out, because it is entering. */}
+            <Check
+              aria-hidden="true"
+              data-on={temporaryChat}
+              className={cn(
+                "size-5 shrink-0 scale-75 opacity-0",
+                // `scale` and not `transform`: Tailwind v4 compiles `scale-*`
+                // to the independent `scale` property, which a transform
+                // transition does not cover.
+                "transition-[opacity,scale] duration-200 ease-out",
+                "data-[on=true]:scale-100 data-[on=true]:opacity-100"
+              )}
+            />
+          </Toggle>
         )}
 
         {/* Generated URL */}
@@ -403,7 +436,7 @@ function PageContent() {
               playDisclosure()
               setInfoOpen(!infoOpen)
             }}
-            className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md py-2.5 text-[0.8125rem] text-muted-foreground hover:text-foreground focus-ring transition-colors duration-150 active:scale-[0.98] motion-reduce:active:scale-100"
+            className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md py-2.5 text-[0.8125rem] text-muted-foreground hover:text-foreground focus-ring transition-[color,scale] duration-150 active:scale-[0.98] motion-reduce:active:scale-100"
           >
             <ChevronDown
               className={cn(
@@ -442,9 +475,11 @@ function PageContent() {
 function App() {
   return (
     <SoundProvider>
-      <Suspense fallback={null}>
-        <PageContent />
-      </Suspense>
+      <TooltipProvider delayDuration={300}>
+        <Suspense fallback={null}>
+          <PageContent />
+        </Suspense>
+      </TooltipProvider>
     </SoundProvider>
   )
 }
