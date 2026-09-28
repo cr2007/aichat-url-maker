@@ -53,6 +53,8 @@ https://cr2007.github.io/aichat-url-maker
 ## Project Structure
 
 ```
+public/
+└─ llms.txt                    # The link grammar, for an agent that finds the site
 scripts/
 ├─ prerender.tsx               # Build step: renders the app into dist/index.html
 ├─ prerender-document.ts       # Pure document assembly and the 14KB budget
@@ -66,11 +68,10 @@ src/
 │  ├─ copyable-input.tsx       # Read-only textarea with copy UX
 │  └─ ui/                      # shadcn-style Radix wrappers
 │     ├─ button.tsx
-│     ├─ checkbox.tsx          # Unused, kept as a shadcn primitive
-│     ├─ dropdown-menu.tsx     # Unused, kept as a shadcn primitive
 │     ├─ segmented-control.tsx # Provider picker: one track, sliding indicator
-│     ├─ toggle.tsx
-│     └─ toggle-group.tsx
+│     ├─ toggle.tsx            # Feature pills and the temporary chat row
+│     ├─ toggle-group.tsx
+│     └─ tooltip.tsx           # Feature descriptions on hover and focus
 └─ lib/
    ├─ providers.tsx            # Provider configs, URL builders, oversized-URL fallback
    ├─ providers.test.ts
@@ -216,16 +217,34 @@ More rules for the glass:
 
 `src/lib/segmented-control.ts` holds the position maths as pure functions, so the tests can use them. `TRACK_PADDING_REM` must agree with the `p-1` class on the track.
 
-### Feature Pills
+### Toggles
 
-The feature group is a grid, not a wrapping row. A wrapping row put the last
-pill alone on a third row.
+The feature pills and the temporary chat row are toggle buttons, not radios
+and not switches. HIG toggles.md: outside a list, use a button that behaves
+like a toggle, not a switch.
 
-- Two columns below 560px, four columns above it. Eight pills then make rows
-  of equal length at every width.
-- Keep `items-stretch`. A label that wraps to two lines would otherwise make
-  its row ragged.
-- A pill keeps its icon. The icon is decorative, and the label gives the name.
+- A pill has `role="button"` and `aria-pressed`. Radix marks an item in a
+  single group as `role="radio"`, but a radio cannot be unchecked, and a
+  second press on a pill clears the feature. `aria-checked` is cleared.
+- The whole temporary chat row is one control. A press anywhere in it toggles
+  the setting.
+- A selected control shows a tick or a fill, not colour alone.
+- The pills style from `aria-pressed`, not `data-state`. A tooltip wraps each
+  pill, and `TooltipTrigger asChild` writes its own `data-state` over the
+  toggle's. The temporary chat row has no tooltip, so it reads `data-state`.
+
+The pills use flex wrap with `justify-center`, not a grid. A grid keeps its
+columns, so a part-filled last row stays on the left. Flex centres every row.
+
+### Motion
+
+- Name `scale` in a transition, not only `transform`. Tailwind v4 compiles
+  `scale-*` to the independent `scale` property, and a transform transition
+  does not cover it. The `transition-transform` shorthand does cover it.
+- An element enters from `scale-75` or higher with opacity. Nothing appears
+  out of nothing.
+- Use `ease-out` for an element that enters. Keep a UI transition at or below
+  300ms.
 
 ### Element IDs
 
@@ -276,6 +295,32 @@ it. Its README lists the local changes. Configure the provider in
 - The `interaction` category is off. The provider control and the feature
   pills are the most used controls, and one of them is draggable, so a cue
   there would repeat as the selection crosses each segment.
+
+### No JavaScript
+
+`index.html` holds a `<noscript>` block. The build prerenders the app into
+`#root`, so a browser with JavaScript off would otherwise show a form that
+looks ready and answers nothing. The block hides that form and gives the link
+grammar in tables instead.
+
+- Keep the rules for that page inside the `<noscript>` block, not in
+  `index.css`. A browser with JavaScript off may also block the stylesheet,
+  and the page must still look right. The rule that hides `#root` must be
+  there in any case, because it has to apply only when JavaScript is off.
+- Each colour reads an app token and falls back to the same value written
+  out, for example `var(--foreground, var(--ns-fg))`. The page matches the app
+  when the stylesheet loads and keeps the palette when it does not.
+- `public/llms.txt` holds the same grammar for an agent. Change both together.
+
+### Tooltips
+
+A feature pill has a tooltip that describes the feature. The text is in
+`providers.tsx` next to the feature, not in `App.tsx`.
+
+- A tooltip repeats what `aria-describedby` gives a screen reader. Never put
+  information in a tooltip alone.
+- `TooltipTrigger asChild` writes `data-state` onto its child. Do not style a
+  trigger from `data-state`.
 
 ### UI Components
 - Reuse components in `src/components/ui/`.
