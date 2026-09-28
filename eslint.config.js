@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // `src/lib/sensory-ui` is vendored third-party code. It is not edited to
+  // satisfy this config, so linting it only produces noise. See its README.
+  globalIgnores(['dist', 'src/lib/sensory-ui']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
