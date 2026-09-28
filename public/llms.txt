@@ -1,0 +1,57 @@
+# AI Prompt URL Generator
+
+> A page for a person. It builds a link that opens ChatGPT, Claude or
+> Perplexity with a prompt already in the input box.
+
+You do not need this page. It only joins a base URL and some query
+parameters. Build the link yourself with the rules below.
+
+The site has no API, no account and no server. It stores nothing except one
+value for the sound setting.
+
+## Build a link
+
+Encode every value. Use a URL encoder, not string joining.
+
+### ChatGPT
+
+Base: `https://chatgpt.com/`
+
+| Parameter | Value | Required |
+|---|---|---|
+| `q` | The prompt | yes |
+| `hints` | One of `search`, `image`, `think`, `research`, `shopping`, `study`, `canvas` | no |
+| `temporary-chat` | `true` keeps the chat out of the history | no |
+
+Example: `https://chatgpt.com/?q=Explain+TCP+slow+start&hints=search`
+
+### Claude
+
+Base: `https://claude.ai/new`
+
+| Parameter | Value | Required |
+|---|---|---|
+| `q` | The prompt | yes |
+| `incognito` | Present, with no value, keeps the chat out of the history | no |
+
+Example: `https://claude.ai/new?q=Explain+TCP+slow+start&incognito`
+
+### Perplexity
+
+Base: `https://www.perplexity.ai/search`
+
+| Parameter | Value | Required |
+|---|---|---|
+| `q` | The prompt | yes |
+
+Example: `https://www.perplexity.ai/search?q=Explain+TCP+slow+start`
+
+## Length limit
+
+Keep the URL at or below 7500 characters. Some servers answer a longer
+request line with HTTP 431. Above that limit, open the base URL and put the
+prompt on the clipboard instead.
+
+## Source
+
+https://github.com/cr2007/aichat-url-maker

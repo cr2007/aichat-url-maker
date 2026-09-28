@@ -42,6 +42,311 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!--
+      The build prerenders the page into #root, so a browser without
+      JavaScript shows a form that looks ready but answers nothing. This
+      block hides that form and explains the position. The steps use
+      <details>, which needs no JavaScript.
+    -->
+    <noscript>
+      <!--
+        These rules are inside <noscript>, not in the stylesheet, for two
+        reasons. The rule that hides #root must apply only when JavaScript is
+        off. And a browser with JavaScript off may also block the stylesheet,
+        which would leave this page as raw HTML.
+
+        Each colour reads a token first and falls back to a literal. The page
+        therefore matches the app when the stylesheet loads, and still looks
+        right when it does not.
+      -->
+      <style>
+        #root { display: none; }
+
+        /*
+         * Each colour reads an app token first and falls back to the same
+         * value written out. The page therefore matches the app when the
+         * stylesheet loads, and keeps the palette when it does not.
+         */
+        .noscript-page {
+          --ns-fg: #0a0a0a;
+          --ns-muted: #4d4d4d;
+          --ns-border: #bebebe;
+          --ns-panel: #f5f5f5;
+          --ns-surface: #ffffff;
+          --ns-link: #3363d2;
+        }
+        body {
+          background-color: var(--background, #ffffff);
+          background-image: var(
+            --bg-gradient,
+            radial-gradient(ellipse 100% 45% at 50% 0%, #c4d8ff73 0%, transparent 100%)
+          );
+          background-attachment: fixed;
+          margin: 0;
+        }
+        @media (prefers-color-scheme: dark) {
+          .noscript-page {
+            --ns-fg: #fafafa;
+            --ns-muted: #a1a1a1;
+            --ns-border: #232323;
+            --ns-panel: #262626;
+            --ns-surface: #0a0a0a;
+            --ns-link: #6591f1;
+          }
+          body {
+            background-color: var(--background, #0a0a0a);
+            background-image: var(
+              --bg-gradient,
+              radial-gradient(ellipse 100% 45% at 50% 0%, #09183b80 0%, transparent 100%)
+            );
+          }
+        }
+
+        .noscript-page {
+          max-width: 44rem;
+          margin: 0 auto;
+          padding: 3rem 1rem 4rem;
+          font-family: "Geist", system-ui, -apple-system, sans-serif;
+          color: var(--foreground, var(--ns-fg));
+          line-height: 1.5;
+        }
+        .noscript-page h1 {
+          margin: 0 0 0.75rem;
+          font-size: 1.5rem;
+          font-weight: 600;
+          letter-spacing: -0.01em;
+        }
+        .noscript-lead {
+          margin: 0 0 1rem;
+          max-width: 38rem;
+          line-height: 1.55;
+          color: var(--muted-foreground, var(--ns-muted));
+        }
+
+        .noscript-panel {
+          margin-top: 1.75rem;
+          border: 1px solid var(--border, var(--ns-border));
+          border-radius: 0.5rem;
+          background: var(--secondary, var(--ns-panel));
+          padding: 0 1rem;
+        }
+        .noscript-panel > summary {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          min-height: 2.75rem;
+          padding: 0.5rem 0;
+          cursor: pointer;
+          font-size: 0.9375rem;
+          font-weight: 500;
+          list-style: none;
+        }
+        .noscript-panel > summary::-webkit-details-marker { display: none; }
+        /* The arrow points down when the content is hidden and up when it is
+           visible, which is the rule for a disclosure control. */
+        .noscript-panel > summary::after {
+          content: "";
+          width: 0.45rem;
+          height: 0.45rem;
+          margin-right: 0.2rem;
+          border-right: 2px solid currentColor;
+          border-bottom: 2px solid currentColor;
+          transform: translateY(-0.12rem) rotate(45deg);
+          transition: transform 200ms ease-out;
+          opacity: 0.7;
+        }
+        .noscript-panel[open] > summary::after {
+          transform: translateY(0.08rem) rotate(-135deg);
+        }
+        .noscript-panel > summary:focus-visible {
+          outline: 2px solid var(--focus-ring, var(--ns-fg));
+          outline-offset: 2px;
+          border-radius: 0.25rem;
+        }
+        .noscript-panel[open] > summary {
+          border-bottom: 1px solid var(--border, var(--ns-border));
+          margin-bottom: 1rem;
+        }
+        .noscript-panel > *:last-child { margin-bottom: 1rem; }
+
+        .noscript-table {
+          width: 100%;
+          margin: 0 0 1.5rem;
+          border-collapse: separate;
+          border-spacing: 0;
+          border: 1px solid var(--border, var(--ns-border));
+          border-radius: 0.375rem;
+          overflow: hidden;
+          font-size: 0.8125rem;
+          text-align: left;
+        }
+        .noscript-table caption {
+          padding: 0 0 0.5rem;
+          font-weight: 500;
+          color: var(--muted-foreground, var(--ns-muted));
+          text-align: left;
+        }
+        .noscript-table th,
+        .noscript-table td {
+          padding: 0.5rem 0.625rem;
+          vertical-align: top;
+          border-bottom: 1px solid var(--border, var(--ns-border));
+        }
+        .noscript-table th + th,
+        .noscript-table th + td,
+        .noscript-table td + td {
+          border-left: 1px solid var(--border, var(--ns-border));
+        }
+        .noscript-table tbody tr:last-child th,
+        .noscript-table tbody tr:last-child td { border-bottom: 0; }
+        .noscript-table thead th {
+          background: var(--background, var(--ns-surface));
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        .noscript-table tbody th { font-weight: 500; white-space: nowrap; }
+        .noscript-table code {
+          font-family: ui-monospace, "SF Mono", Menlo, monospace;
+          font-size: 0.78em;
+          background: var(--background, var(--ns-surface));
+          border: 1px solid var(--border, var(--ns-border));
+          border-radius: 0.25rem;
+          padding: 0.05rem 0.3rem;
+          overflow-wrap: anywhere;
+        }
+        .noscript-note {
+          margin: 0;
+          font-size: 0.8125rem;
+          color: var(--muted-foreground, var(--ns-muted));
+        }
+        .noscript-page a { color: var(--primary, var(--ns-link)); }
+
+        @media (max-width: 30rem) {
+          .noscript-table { display: block; overflow-x: auto; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .noscript-panel > summary::after { transition: none; }
+        }
+      </style>
+      <main class="noscript-page">
+        <h1>This page needs JavaScript</h1>
+        <p class="noscript-lead">
+          The link is built in your browser. Nothing is sent to a server, so
+          there is no version of this page that works without JavaScript.
+        </p>
+        <p class="noscript-lead">
+          You can turn JavaScript on for this site, or build the link
+          yourself. Each link is one address and one query parameter.
+        </p>
+
+        <details class="noscript-panel">
+          <summary>Build the link yourself</summary>
+
+          <table class="noscript-table">
+            <caption>Addresses and parameters</caption>
+            <thead>
+              <tr>
+                <th scope="col">Assistant</th>
+                <th scope="col">Address</th>
+                <th scope="col">Parameters</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">ChatGPT</th>
+                <td><code>https://chatgpt.com/</code></td>
+                <td>
+                  <code>q</code> the prompt<br />
+                  <code>hints</code> one feature<br />
+                  <code>temporary-chat=true</code>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Claude</th>
+                <td><code>https://claude.ai/new</code></td>
+                <td>
+                  <code>q</code> the prompt<br />
+                  <code>incognito</code> no value
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Perplexity</th>
+                <td><code>https://www.perplexity.ai/search</code></td>
+                <td><code>q</code> the prompt</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table class="noscript-table">
+            <caption>Feature values for the ChatGPT <code>hints</code> parameter</caption>
+            <thead>
+              <tr>
+                <th scope="col">Value</th>
+                <th scope="col">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row"><code>search</code></th><td>Looks for current information on the web.</td></tr>
+              <tr><th scope="row"><code>image</code></th><td>Makes a picture from the prompt.</td></tr>
+              <tr><th scope="row"><code>think</code></th><td>Works through the problem step by step.</td></tr>
+              <tr><th scope="row"><code>research</code></th><td>Reads many sources and writes a report.</td></tr>
+              <tr><th scope="row"><code>shopping</code></th><td>Compares products and shows prices.</td></tr>
+              <tr><th scope="row"><code>study</code></th><td>Teaches the topic.</td></tr>
+              <tr><th scope="row"><code>canvas</code></th><td>Opens a side panel to write or edit.</td></tr>
+            </tbody>
+          </table>
+
+          <table class="noscript-table">
+            <caption>Encode these characters in the prompt</caption>
+            <thead>
+              <tr>
+                <th scope="col">Character</th>
+                <th scope="col">Write</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">space</th><td><code>+</code></td></tr>
+              <tr><th scope="row"><code>&amp;</code></th><td><code>%26</code></td></tr>
+              <tr><th scope="row"><code>#</code></th><td><code>%23</code></td></tr>
+              <tr><th scope="row"><code>?</code></th><td><code>%3F</code></td></tr>
+              <tr><th scope="row"><code>=</code></th><td><code>%3D</code></td></tr>
+            </tbody>
+          </table>
+
+          <table class="noscript-table">
+            <caption>Examples</caption>
+            <thead>
+              <tr>
+                <th scope="col">Goal</th>
+                <th scope="col">Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">A plain prompt</th>
+                <td><code>https://chatgpt.com/?q=Explain+TCP+slow+start</code></td>
+              </tr>
+              <tr>
+                <th scope="row">With web search</th>
+                <td><code>https://chatgpt.com/?q=Explain+TCP+slow+start&amp;hints=search</code></td>
+              </tr>
+              <tr>
+                <th scope="row">Claude, no history</th>
+                <td><code>https://claude.ai/new?q=Explain+TCP+slow+start&amp;incognito</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="noscript-note">
+            Keep the link at or below 7500 characters. Some servers refuse a
+            longer address.
+          </p>
+        </details>
+      </main>
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
