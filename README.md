@@ -9,6 +9,11 @@ You can try out the app now at https://cr2007.github.io/aichat-url-maker
 Why this helps
 - Create, copy, and open URLs that prefill prompts in your favourite AI chat app for sharing or quick reuse.
 - Adds optional flags (features, temporary chat) to the URL so workflows can be shared precisely.
+- Falls back to copying the prompt and opening the provider directly when it is too long to fit in a link.
+- Follows your system light and dark appearance. There is no second setting to keep in sync.
+- Lets you tap a provider or drag between providers. The drag works with a mouse, a pen and a touch screen.
+- Shows the page from the first response, so it appears quickly on a slow connection.
+- Has optional interface sounds. They are off until you turn them on.
 
 ---
 
@@ -30,6 +35,15 @@ bun dev # Starts the development server
 ```
 
 And then you can access the web app at http://localhost:5173
+
+### Other commands
+
+```sh
+bun test          # Runs the unit tests
+bun run lint      # Runs ESLint
+bun run build     # Type-checks, builds to dist/, then prerenders the page
+bun run build:nossg  # Builds without the prerender step
+```
 
 ## Node.js
 

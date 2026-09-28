@@ -44,7 +44,8 @@ https://cr2007.github.io/aichat-url-maker
 - No backend or server logic.
 - No API calls to AI providers.
 - No authentication.
-- No persistence or analytics.
+- No analytics.
+- No persistence, except the sound preference. See **Sound**.
 - No direct usage of AI provider SDKs.
 
 ---
@@ -52,25 +53,40 @@ https://cr2007.github.io/aichat-url-maker
 ## Project Structure
 
 ```
+scripts/
+├─ prerender.tsx               # Build step: renders the app into dist/index.html
+├─ prerender-document.ts       # Pure document assembly and the 14KB budget
+└─ prerender-document.test.ts
 src/
-├─ App.tsx                 # Main UI and URL generation logic
-├─ main.tsx                # React entry point
-├─ index.css               # Tailwind setup and theme variables
+├─ App.tsx                     # Main UI, form state, and URL generation wiring
+├─ main.tsx                    # React entry point. Hydrates the prerendered markup
+├─ sw.ts                       # Workbox service worker (vite-plugin-pwa, injectManifest)
+├─ index.css                   # Tailwind setup, design tokens, appearance, reduced motion
 ├─ components/
-│  ├─ copyable-input.tsx   # Read-only textarea with copy UX
-│  ├─ mode-toggle.tsx      # Light/Dark/System theme dropdown
-│  ├─ theme-provider.tsx   # Theme context and localStorage persistence
-│  └─ ui/                  # shadcn-style Radix wrappers
+│  ├─ copyable-input.tsx       # Read-only textarea with copy UX
+│  └─ ui/                      # shadcn-style Radix wrappers
 │     ├─ button.tsx
-│     ├─ checkbox.tsx
-│     ├─ dropdown-menu.tsx
+│     ├─ checkbox.tsx          # Unused, kept as a shadcn primitive
+│     ├─ dropdown-menu.tsx     # Unused, kept as a shadcn primitive
+│     ├─ segmented-control.tsx # Provider picker: one track, sliding indicator
 │     ├─ toggle.tsx
 │     └─ toggle-group.tsx
 └─ lib/
-   ├─ providers.tsx        # Provider configs, URL builders, oversized-URL fallback logic
-   ├─ providers.test.ts    # Unit tests for URL generation and the fallback logic
-   └─ utils.ts             # cn() helper (clsx + tailwind-merge)
+   ├─ providers.tsx            # Provider configs, URL builders, oversized-URL fallback
+   ├─ providers.test.ts
+   ├─ segmented-control.ts     # Pure indicator geometry for the segmented control
+   ├─ segmented-control.test.ts
+   ├─ sound.tsx                # SoundProvider. Loads the engine on demand
+   ├─ sound-context.ts         # Sound context, types, and the stored preference
+   ├─ sound-context.test.ts
+   ├─ sound-engine.tsx         # The lazy chunk. Wraps the vendored provider
+   ├─ use-sound.ts             # useSound and useSoundPreference
+   ├─ sensory-ui/              # Vendored sound library. See its README
+   ├─ utils.ts                 # cn() helper and countWords()
+   └─ utils.test.ts
 ```
+
+There is no theme provider or appearance toggle. See **Appearance** below.
 
 ---
 
@@ -91,7 +107,19 @@ Runs the app at `http://localhost:5173`.
 bun test
 ```
 
-Tests live in `src/lib/providers.test.ts` and cover `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic. Use `bun:test` for any new tests. Test files are excluded from the TypeScript production build via `tsconfig.app.json`.
+Use `bun:test` for any new tests. Test files are excluded from the TypeScript production build via `tsconfig.app.json`.
+
+| File | Covers |
+|------|--------|
+| `src/lib/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic |
+| `src/lib/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
+| `src/lib/utils.test.ts` | `countWords` whitespace handling and `cn` class merging |
+| `src/lib/sound-context.test.ts` | `parseSoundPreference`: the default, the stored values, and an unknown value |
+| `scripts/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget |
+
+There is no DOM test suite. A DOM test suite needs more dependencies. Move the pure parts of a component into `src/lib/` instead, as `segmented-control.ts` does for the indicator position. The tests can then use them.
+
+Some behaviour exists only in a browser: the size of a target, the ARIA attributes, the layout at each width, the contrast and the drag gesture. Check that behaviour with Playwright against the dev server.
 
 ---
 
@@ -104,6 +132,7 @@ bun run build
 ```
 
 - Output directory: `dist/`
+- `bun run build` runs `vite build` and then `scripts/prerender.tsx`. Use `bun run build:nossg` to skip the prerender.
 - When deployed to GitHub Pages, the Vite base path is set via the `GITHUB_PAGES` and `GITHUB_REPO` environment variables read in `vite.config.ts`. Do not hardcode or change that logic.
 
 Three workflows live in `.github/workflows/`:
@@ -138,7 +167,115 @@ Three workflows live in `.github/workflows/`:
 - Respect existing design tokens and CSS variables.
 - Prefer composition over custom styling.
 - `hover:` is redefined in `index.css` to gate on `(any-hover: hover)` instead of Tailwind's default `(hover: hover)`, so stylus input (S Pen, Apple Pencil) can trigger hover styles on primarily-touch devices. Don't reintroduce plain `(hover: hover)` gating locally.
-- `ToggleGroupItem` (`toggle-group.tsx`) applies an unconditional `data-[spacing=0]:shadow-none` that lands after most utility classes in the compiled stylesheet, silently canceling any `hover:shadow-*` glow at equal specificity. `toggle.tsx`'s hover shadow utilities use the `!` important modifier to beat it — keep that `!` if you touch those classes, and expect to need it again for any other `box-shadow` hover effect on a `ToggleGroupItem`.
+- `ToggleGroupItem` (`toggle-group.tsx`) applies an unconditional `data-[spacing=0]:shadow-none` that lands after most utility classes in the compiled stylesheet, silently canceling any `hover:shadow-*` glow at equal specificity. `toggle.tsx`'s hover shadow utilities use the `!` important modifier to beat it. Keep that `!` if you touch those classes, and expect to need it again for any other `box-shadow` hover effect on a `ToggleGroupItem`.
+- Size text in `rem`, not `px`, so it follows the browser's font-size setting. Do not go below `0.8125rem` (13px) for any text.
+- Every motion must survive `prefers-reduced-motion`. `index.css` has a blanket floor in `@layer base`; prefer a local `motion-reduce:` variant where a component needs something more specific than "near-instant".
+- A hover shadow goes below the control, in the colour of that control. Do not use a symmetric shadow, and do not use a colour from a different part of the palette. Both make a halo.
+- Hover must not fade a control. A fade dims the label with the background, and the control then looks disabled.
+
+### Focus
+
+Every control that can take the focus gets the `focus-ring` class from `index.css`. It draws a 2px outline in `--focus-ring` with a 2px offset.
+
+- Do not use `--ring` for a focus indicator. `--ring` is the accent colour, and it disappears on a control that the accent colour fills, such as the primary button or a selected pill.
+- Do not add `outline-none` next to `focus-ring`. Tailwind utilities rank above the components layer, so `outline-none` removes the indicator.
+- Keep the offset. The outline is then next to the page background, not next to the fill of the control.
+
+### Appearance
+
+The appearance follows the system. The app has no light or dark control, no theme context and no `localStorage` value.
+
+- The Tailwind `dark` variant is `@custom-variant dark (@media (prefers-color-scheme: dark))`. There is no `.dark` class. Do not add a class-based control.
+- The dark values are in a `@media (prefers-color-scheme: dark) { :root { ... } }` block in `index.css`. Give each token in `:root` a value in that block.
+- `:root` sets `color-scheme: light dark`. The browser then draws the scrollbars and the form controls in the system appearance.
+- `index.html` has two `theme-color` tags, one for each appearance. Change both tags together.
+- In dark mode an elevated surface must be lighter than the surface below it. The ladder is `--segment-thumb` (0.32) above `--segment-track` (0.21) above `--background` (0.145). Do not use `--background` for an elevated surface. That value is correct in light mode only.
+
+### Segmented Control
+
+`src/components/ui/segmented-control.tsx` is the provider control. It changes three Radix defaults. Keep all three.
+
+- The track has `role="radiogroup"`. Radix gives it `role="group"`. The items already have `role="radio"` and `aria-checked`.
+- Selection follows the arrow keys through `onFocus`. Radix only moves the focus.
+- `onFocus` does not select while a pointer is down. A person can then press one segment and drag to a different segment.
+
+A person can drag the indicator with a mouse, a pen or a finger. Rules for that gesture:
+
+- Capture the pointer in the move handler, not in the down handler. A capture sends the `click` event to the track, and a tap then selects nothing.
+- Keep `touch-pan-y` on the track. The page can then still scroll vertically on a touch screen.
+- Block the `click` after a drag. Without that the segment below the pointer selects itself.
+- During a drag the track has `data-dragging="true"`, and the segment that a release selects has `data-candidate="true"`. The CSS makes that label brighter and its icon larger. A person can then see the result before the release. Keep both cues. Color alone does not show a state.
+
+The indicator gets a Liquid Glass surface during a press only. See `.segment-indicator` in `index.css`. Do not apply glass at rest, and do not apply it to another element. HIG keeps glass out of the content layer. The one exception is a "transient interactive element", which this indicator is.
+
+More rules for the glass:
+
+- Keep `--segment-track` translucent. The page gradient is then behind the glass, and `backdrop-filter` has an image to blur. A solid track gives no glass effect.
+- The primary color tints the glass during the drag only. At rest the indicator is neutral. HIG color.md keeps a tinted background on one control, and the "Open in" button is that control.
+- Do not put a text color utility on a segment. Tailwind utilities rank above the components layer, so a utility stops the drag rules. The `.segment-item` rules in `index.css` own the label color.
+
+`src/lib/segmented-control.ts` holds the position maths as pure functions, so the tests can use them. `TRACK_PADDING_REM` must agree with the `p-1` class on the track.
+
+### Feature Pills
+
+The feature group is a grid, not a wrapping row. A wrapping row put the last
+pill alone on a third row.
+
+- Two columns below 560px, four columns above it. Eight pills then make rows
+  of equal length at every width.
+- Keep `items-stretch`. A label that wraps to two lines would otherwise make
+  its row ragged.
+- A pill keeps its icon. The icon is decorative, and the label gives the name.
+
+### Element IDs
+
+Give each important container and control a readable `id`. Name it for its function, for example `provider-picker`, `open-in-provider` or `how-it-works-toggle`. Do not name it for its style. These ids identify elements in a review. They are also targets for `aria-labelledby` and `aria-controls`. A wrapper component must accept an `id` prop and pass it on.
+
+### Comments
+
+- Give each exported function, component and interface a TSDoc block. Add `@param` and `@returns`.
+- Number the steps in a function body as `Step X.Y`.
+- Write the reason for the code, not the operation of the code. Delete a comment that is not correct.
+- Use ASD-STE100 Simplified Technical English. Write short sentences. Use the active voice. Use one word for one meaning.
+- Do not use an em dash. Do not use an emoji.
+
+### First Response
+
+The build prerenders the page into `dist/index.html` and puts the stylesheet
+in the document. The first response therefore carries the markup and the
+styles, and the browser paints without a second request. Before this step the
+document held an empty root, and nothing painted for about 3 seconds on a slow
+connection.
+
+- Keep the document at or below 14KB gzipped. A server sends about that much
+  in the first round trip. `buildDocument` keeps the stylesheet external when
+  the document would go over, and the build prints the size.
+- The markup comes from `react-dom/server`. Do not take it from a browser. A
+  browser snapshot also holds what a component writes to the DOM after it
+  mounts, such as the roving `tabindex` from Radix. React then reports a
+  hydration mismatch and discards the markup.
+- The first client render must match the prerender. Do not read `localStorage`
+  or `window` during a render. Use `useSyncExternalStore` with a server
+  snapshot, as `SoundProvider` does.
+- `main.tsx` hydrates when the root holds markup and renders when it is empty,
+  so `bun dev` needs no prerender.
+
+### Sound
+
+`src/lib/sensory-ui/` is a vendored copy of
+[sensory-ui](https://github.com/SatyamVyas04/sensory-ui) (MIT). ESLint ignores
+it. Its README lists the local changes. Configure the provider in
+`sound-engine.tsx`. Do not edit the vendored files to change behaviour.
+
+- Sound is off until a person turns it on, and the choice is stored. There is
+  no media query for sound, so a stored value is the only way to keep it.
+- The engine loads on demand. `sound.tsx` mounts it only while sound is on, so
+  a person who never opts in never downloads it. Keep that `import()`.
+- Each sound repeats something the interface already shows. Sound is never the
+  only signal.
+- The `interaction` category is off. The provider control and the feature
+  pills are the most used controls, and one of them is draggable, so a cue
+  there would repeat as the selection crosses each segment.
 
 ### UI Components
 - Reuse components in `src/components/ui/`.
@@ -207,7 +344,7 @@ production site `https://cr2007.github.io/aichat-url-maker`. Do not change
 these URLs without a corresponding domain change.
 
 The following static image assets must be present in `public/` for full
-social-sharing and PWA support. They are not generated — place them there
+social-sharing and PWA support. They are not generated, so place them there
 manually:
 
 | File | Size | Purpose |
