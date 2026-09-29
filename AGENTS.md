@@ -57,7 +57,7 @@ public/
 └─ llms.txt                    # The link grammar, for an agent that finds the site
 scripts/
 ├─ prerender.tsx               # Build step: renders the app into dist/index.html
-└─ prerender-document.ts       # Pure document assembly and the 14KB budget
+└─ prerender-document.ts       # Pure document assembly, the deploy base, the 14KB budget
 tests/
 ├─ unit/                       # Pure functions. See Testing
 └─ browser/                    # The built site in Chromium. See Testing
@@ -130,7 +130,7 @@ tests/
 | `tests/unit/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic |
 | `tests/unit/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
 | `tests/unit/utils.test.ts` | `countWords` whitespace handling, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
-| `tests/unit/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget |
+| `tests/unit/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget. Also `resolveAssetPath`, which takes the deploy base off a stylesheet URL |
 
 There is no DOM test suite for a component in isolation. Move the pure parts
 of a component into `src/lib/` instead, as `segmented-control.ts` does for the
@@ -169,7 +169,7 @@ bun run build
 
 - Output directory: `dist/`
 - `bun run build` runs `vite build` and then `scripts/prerender.tsx`. Use `bun run build:nossg` to skip the prerender.
-- When deployed to GitHub Pages, the Vite base path is set via the `GITHUB_PAGES` and `GITHUB_REPO` environment variables read in `vite.config.ts`. Do not hardcode or change that logic.
+- When deployed to GitHub Pages, the Vite base path comes from the `GITHUB_PAGES` and `GITHUB_REPO` environment variables. `BASE_PATH` in `scripts/prerender-document.ts` holds that logic. `vite.config.ts` sets the Vite base from it, and the prerender step takes it off again with `resolveAssetPath`. Do not hardcode the value and do not copy the logic into a second file. Pages serves the site from a subdirectory, so every absolute asset URL carries the repository name while the file sits at the root of `dist/`. That module imports nothing, so the config can read it without loading the build tools.
 
 Three workflows live in `.github/workflows/`:
 

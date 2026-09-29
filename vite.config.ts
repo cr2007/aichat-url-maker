@@ -3,9 +3,8 @@ import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { BASE_PATH } from './scripts/prerender-document'
 
-const isGithubPages = process.env.GITHUB_PAGES === 'true';
-const repoName = process.env.GITHUB_REPO || '';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -44,7 +43,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  base: isGithubPages ? `/${repoName}/` : '',
+  base: BASE_PATH,
   server: {
     // Vite blocks requests with an unrecognized Host header by default.
     // This allowlists Cloudflare Quick Tunnel hostnames so `bun dev` can be

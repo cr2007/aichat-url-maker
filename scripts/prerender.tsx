@@ -21,9 +21,11 @@ import { renderToString } from "react-dom/server"
 
 import App from "../src/App"
 import {
+  BASE_PATH,
   FIRST_RESPONSE_BUDGET,
   buildDocument,
   findStylesheetHref,
+  resolveAssetPath,
 } from "./prerender-document"
 
 const DIST = new URL("../dist/", import.meta.url).pathname
@@ -43,7 +45,7 @@ const markup = renderToString(
 // Step 1.2: read the document and its stylesheet.
 const html = await Bun.file(INDEX).text()
 const href = findStylesheetHref(html)
-const css = href ? await Bun.file(DIST + href.replace(/^\//, "")).text() : null
+const css = href ? await Bun.file(DIST + resolveAssetPath(href, BASE_PATH)).text() : null
 
 // Step 1.3: assemble the document and write it back.
 const result = buildDocument({ html, markup, css, measure: gzipSize })

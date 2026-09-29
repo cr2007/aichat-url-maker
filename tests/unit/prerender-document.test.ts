@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test"
 import {
+  BASE_PATH,
   FIRST_RESPONSE_BUDGET,
   buildDocument,
   findStylesheetHref,
   insertMarkup,
+  resolveAssetPath,
 } from "../../scripts/prerender-document"
+
+/** The repository root, for a subprocess that reads the build config. */
+const ROOT = new URL("../../", import.meta.url).pathname
 
 const SHELL =
   '<!doctype html><html><head>' +
@@ -113,5 +118,66 @@ describe("buildDocument", () => {
       budget: expected.length,
     })
     expect(result.cssInlined).toBe(true)
+  })
+})
+
+describe("BASE_PATH", () => {
+  /**
+   * Reads both bases from a build that thinks it runs on GitHub Pages.
+   *
+   * The values come from the environment at import time, so a subprocess is
+   * the only way to see the Pages case from here.
+   *
+   * @returns The shared constant and the base that Vite would use.
+   */
+  function readPagesBases(): { BASE_PATH: string; base: string } {
+    // Step 1.1: import both modules with the Pages variables set.
+    const source =
+      'const { BASE_PATH } = await import("./scripts/prerender-document.ts");' +
+      'const config = (await import("./vite.config.ts")).default;' +
+      "console.log(JSON.stringify({ BASE_PATH, base: config.base }))"
+    const run = Bun.spawnSync(["bun", "-e", source], {
+      cwd: ROOT,
+      env: { ...process.env, GITHUB_PAGES: "true", GITHUB_REPO: "aichat-url-maker" },
+    })
+
+    // Step 1.2: read the last line, so a warning above it does not break it.
+    const out = run.stdout.toString().trim().split("\n").at(-1) ?? ""
+    return JSON.parse(out)
+  }
+
+  test("Vite deploys under the path that the prerender step removes", () => {
+    // The two once disagreed. Vite wrote `/aichat-url-maker/assets/index.css`
+    // while the prerender step looked under `dist/` for that whole path, so
+    // the deploy failed with ENOENT and no local build saw it.
+    const { BASE_PATH: shared, base } = readPagesBases()
+    expect(shared).toBe("/aichat-url-maker/")
+    expect(base).toBe(shared)
+  })
+
+  test("a local build deploys from the root", () => {
+    expect(BASE_PATH).toBe("")
+  })
+})
+
+describe("resolveAssetPath", () => {
+  test("it removes the deploy base", () => {
+    // GitHub Pages serves from a subdirectory, so the href carries the
+    // repository name. The file has no such directory inside `dist/`.
+    expect(resolveAssetPath("/aichat-url-maker/assets/index.css", "/aichat-url-maker/")).toBe(
+      "assets/index.css"
+    )
+  })
+
+  test("it makes a root path relative", () => {
+    expect(resolveAssetPath("/assets/index.css", "")).toBe("assets/index.css")
+  })
+
+  test("it keeps a path that is already relative", () => {
+    expect(resolveAssetPath("assets/index.css", "")).toBe("assets/index.css")
+  })
+
+  test("it leaves a path that does not carry the base", () => {
+    expect(resolveAssetPath("/assets/index.css", "/other/")).toBe("assets/index.css")
   })
 })

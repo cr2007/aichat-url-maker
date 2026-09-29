@@ -1,8 +1,24 @@
 /**
  * Document assembly for the prerender step.
  *
- * These functions are pure, so the tests can use them without a build.
+ * These functions are pure, so the tests can use them without a build. This
+ * module imports nothing, so `vite.config.ts` can read {@link BASE_PATH} from
+ * it without loading the build tools.
  */
+
+/**
+ * The path that the site deploys under.
+ *
+ * GitHub Pages serves the site from a subdirectory named after the
+ * repository. A local build and a preview serve from the root.
+ *
+ * `vite.config.ts` sets the Vite base from this value, and the prerender step
+ * takes it off again with {@link resolveAssetPath}. Both must agree. If they
+ * do not, the prerender step looks for the stylesheet in a directory that the
+ * build never made.
+ */
+export const BASE_PATH =
+  process.env.GITHUB_PAGES === "true" ? `/${process.env.GITHUB_REPO || ""}/` : ""
 
 /**
  * The first-response budget, in gzipped bytes.
@@ -37,6 +53,31 @@ export interface BuiltDocument {
  */
 export function findStylesheetHref(html: string): string | null {
   return html.match(STYLESHEET_PATTERN)?.[1] ?? null
+}
+
+/**
+ * Turns a stylesheet URL from the document into a path inside `dist/`.
+ *
+ * The build writes an absolute URL that carries the deploy base, for example
+ * `/aichat-url-maker/assets/index.css`. The file itself sits at
+ * `dist/assets/index.css`, so the base has to come off before the path can
+ * join to `dist/`.
+ *
+ * @param href - The URL from the `<link>` tag.
+ * @param base - The deploy base. Use an empty string for the root.
+ * @returns The path, relative to `dist/`.
+ *
+ * @example
+ * ```ts
+ * resolveAssetPath("/repo/assets/a.css", "/repo/") // "assets/a.css"
+ * ```
+ */
+export function resolveAssetPath(href: string, base: string): string {
+  // Step 1.1: remove the deploy base, which `dist/` does not contain.
+  const withoutBase = base && href.startsWith(base) ? href.slice(base.length) : href
+
+  // Step 1.2: make the path relative, so it can join to `dist/`.
+  return withoutBase.replace(/^\//, "")
 }
 
 /**
