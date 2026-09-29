@@ -1,6 +1,49 @@
 # AI Agent Instructions (AGENTS.md)
 
-This document provides essential context, architecture details, and working conventions for AI coding agents contributing to this repository.
+This document gives the context and the working conventions for an AI agent
+that contributes to this repository. Read **Read This First** before you start
+and again before you report that a change is complete. The sections after it
+give the detail.
+
+---
+
+## Read This First
+
+These rules get missed most often. A change that breaks one of them is not
+complete, even when it works.
+
+### Always
+
+| Rule | Detail |
+|------|--------|
+| Bun only | `bun`, `bunx --bun`. Never npm, npx, yarn, pnpm or node. Translate a command from any README that uses them |
+| No em dash, no emoji | In code, comments, UI text, documents, and commit messages |
+| ASD-STE100 Simplified Technical English | Short sentences. Active voice. One word for one meaning. Do not overexplain |
+| TSDoc on every export | Each exported function, component and interface gets a block with `@param` and `@returns` |
+| `Step X.Y` inside a function | Number the steps in a function body. Write the reason, not the operation |
+| Use what exists | Do not add a file, a dependency, an abstraction or a state manager that the task does not need. Put a new constant in a file that already fits |
+| Never commit `.claude/` | Personal tooling. It is gitignored. Keep it that way |
+
+### Before you say a change is complete
+
+1. `bun run test` and `bun run test:browser` pass.
+2. `bun run build` passes, **and** the Pages build passes:
+   `GITHUB_PAGES=true GITHUB_REPO=aichat-url-maker bun run build`.
+   A local build uses an empty base and hides a whole class of fault.
+3. A regression test covers each defect that the change fixes. Run that test
+   against the code from before the fix and watch it fail. A test that passes
+   both ways proves nothing.
+4. No dead code, no unused export, no file left over from an earlier approach.
+5. The documents below match the code.
+
+### Change one, change the others
+
+| When you change | Also change |
+|-----------------|-------------|
+| A provider, a feature value, or `MAX_SAFE_URL_LENGTH` in `providers.tsx` | The `<noscript>` tables in `index.html` **and** `public/llms.txt` |
+| The file tree, a script in `package.json`, or a test | The **Project Structure** and **Testing** sections here, and `README.md` |
+| A `theme-color` tag in `index.html` | The other `theme-color` tag |
+| A token in `:root` in `index.css` | The same token in the `prefers-color-scheme: dark` block |
 
 ---
 
@@ -424,15 +467,19 @@ will degrade gracefully. The SVG favicon doubles as the PWA manifest icon via
 
 ## Things AI Agents Should Avoid
 
-- Using Node.js, npm, or npx -- always use Bun (`bun`, `bunx`).
+See also the **Always** table in **Read This First**.
+
+- Using Node.js, npm, or npx. Always use Bun (`bun`, `bunx --bun`).
 - Adding a backend or server.
-- Introducing analytics, cookies, or tracking.
+- Introducing analytics, cookies, or tracking. The app stores nothing.
 - Adding AI provider SDKs or API keys.
 - Changing deployment strategy without explicit instruction.
-- Overengineering abstractions or state management.
+- Overengineering. Do not add a file for one constant, an abstraction with one
+  caller, or a state manager. Put the code in a file that already fits.
 - Making provider-specific changes that break the abstraction layer.
 - Hardcoding URLs or query parameters outside of provider configurations.
-- Committing local Claude Code tooling under `.claude/` (skills, settings) - these are personal workflow helpers, not project conventions, and are gitignored.
+- Committing local Claude Code tooling under `.claude/`. These are personal
+  workflow helpers, not project conventions, and they are gitignored.
 
 ---
 
