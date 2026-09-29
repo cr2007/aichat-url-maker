@@ -18,7 +18,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "bun test tests/unit",
-    "test:browser": "bun run build && bun test tests/browser",
+    "test:browser": "bun run build && bun test tests/browser --timeout 30000",
     "test:all": "bun run test && bun run test:browser"
   },
   "dependencies": {

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { printBanner } from './lib/console-banner.ts'
 
 const container = document.getElementById('root')!
 
@@ -19,3 +20,6 @@ if (container.hasChildNodes()) {
 } else {
   createRoot(container).render(tree)
 }
+
+// The greeting goes last, so it does not delay the first paint.
+printBanner()

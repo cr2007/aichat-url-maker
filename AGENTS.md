@@ -118,9 +118,10 @@ src/
 │     ├─ toggle-group.tsx
 │     └─ tooltip.tsx           # Feature descriptions on hover and focus
 └─ lib/
+   ├─ console-banner.ts        # The greeting that the browser console shows
    ├─ providers.tsx            # Provider configs, URL builders, oversized-URL fallback
    ├─ segmented-control.ts     # Pure indicator geometry for the segmented control
-   └─ utils.ts                 # cn() helper and countWords()
+   └─ utils.ts                 # cn() helper, countWords(), copyText()
 ```
 
 There is no theme provider or appearance toggle. See **Appearance** below.
@@ -154,6 +155,7 @@ production build.
 ```
 tests/
 ├─ unit/          # Pure functions. No DOM, no browser
+│  ├─ console-banner.test.ts
 │  ├─ providers.test.ts
 │  ├─ segmented-control.test.ts
 │  ├─ utils.test.ts
@@ -174,6 +176,7 @@ tests/
 | `tests/unit/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
 | `tests/unit/utils.test.ts` | `countWords` whitespace handling, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
 | `tests/unit/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget. Also `resolveAssetPath`, which takes the deploy base off a stylesheet URL |
+| `tests/unit/console-banner.test.ts` | The console art: one style for each `%c`, the row count, rows of equal width, no row wider than 80 columns, the ink and the paper, no emoji or em dash, no sentence, no `url()`, and a console that throws |
 
 There is no DOM test suite for a component in isolation. Move the pure parts
 of a component into `src/lib/` instead, as `segmented-control.ts` does for the
@@ -188,7 +191,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, and reduced motion |
 | `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text and `aria-describedby`, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, and a full pass that stores nothing |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing |
 
 Rules for a browser test:
 
@@ -382,6 +385,39 @@ A feature pill has a tooltip that describes the feature. The text is in
   information in a tooltip alone.
 - `TooltipTrigger asChild` writes `data-state` onto its child. Do not style a
   trigger from `data-state`.
+
+### Console Greeting
+
+`src/lib/console-banner.ts` shows one picture in the browser console.
+`main.tsx` calls it after the app mounts. It prints no text. The page already
+explains itself, and the console is not a second place to do that.
+
+**The picture is text, not an image file.** Chrome does not load a background
+image from a console style. The row draws at the right size, and the picture
+never arrives. Verified against a served file, HTTP 200, with no Content
+Security Policy: the browser never requests it. Do not put `url()` in a
+console style. A test guards this.
+
+- Each cell was matched by glyph shape, not by brightness alone. Every
+  candidate character was drawn, reduced to a grid of segments, and compared
+  against the same grid taken from the picture. Box drawing characters then
+  land on the edges, which a brightness ramp cannot do.
+- Keep every row at or below 80 columns. A console wraps a longer row, and a
+  wrapped row breaks the picture. A test measures this.
+- The style sets both the ink and the paper. A console has its own theme that
+  the page cannot read, so art that takes the console colour is right on one
+  theme and a negative on the other. Fixed colours look the same on both. Do
+  not remove either one, and do not use a tint: a tint flattens the shading
+  that carries the face.
+- A solid character means a dark part of the picture, which is correct
+  because the ink is dark. Do not invert the tones to suit a dark console.
+  The paper already fixes the polarity.
+- Every row is padded to the same width. The paper is the background of the
+  text, so a short row leaves a notch in the rectangle. A test measures this.
+- `printBanner` catches its own errors. An extension can replace
+  `console.log`, and a greeting must never stop the app.
+- The art ships in the JS bundle, not in the document, so it does not count
+  against the 14KB first response.
 
 ### UI Components
 - Reuse components in `src/components/ui/`.

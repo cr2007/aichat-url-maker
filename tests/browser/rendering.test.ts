@@ -176,6 +176,40 @@ describe("the first load", () => {
   })
 })
 
+describe("the console greeting", () => {
+  test("it prints the art once", async () => {
+    const opened = await openPage()
+    const messages: { text: string; args: number }[] = []
+    opened.page.on("console", (message) =>
+      messages.push({ text: message.text(), args: message.args().length })
+    )
+    await opened.page.reload({ waitUntil: "networkidle" })
+    await opened.page.waitForTimeout(400)
+
+    const banner = messages.filter((message) => message.text.includes("▒"))
+    expect(banner).toHaveLength(1)
+    // One format string and one style.
+    expect(banner[0].args).toBe(2)
+    // The greeting must not raise an error of its own.
+    expect(opened.errors).toEqual([])
+    await opened.close()
+  })
+
+  test("it fetches nothing of its own", async () => {
+    // The art is text in the bundle. Chrome does not load a background image
+    // from a console style, so a picture file would only add a dead request.
+    const opened = await openPage()
+    const fetched: string[] = []
+    opened.page.on("request", (request) => fetched.push(request.url()))
+    await opened.page.reload({ waitUntil: "networkidle" })
+    await fillPrompt(opened.page)
+    await opened.page.waitForTimeout(400)
+
+    expect(fetched.filter((url) => /\.(webp|png|jpe?g|gif)$/.test(url))).toEqual([])
+    await opened.close()
+  })
+})
+
 describe("storage", () => {
   test("a full pass stores nothing", async () => {
     // The app keeps no state between visits and sets no cookie. See
