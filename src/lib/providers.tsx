@@ -27,7 +27,6 @@ export interface ProviderConfig {
   name: string
   icon?: React.ReactNode
   baseURL: string
-  promptParam: string
   supportsFeatures: boolean
   supportsTemporaryChat: boolean
   temporaryChatIcon?: React.ReactNode
@@ -154,7 +153,6 @@ export const PROVIDERS: ProviderConfig[] = [
     name: "ChatGPT",
     icon: <ChatGPTIcon className="w-4 h-4" />,
     baseURL: "https://chatgpt.com/",
-    promptParam: "q",
     supportsFeatures: true,
     supportsTemporaryChat: true,
     features: CHATGPT_FEATURES,
@@ -171,7 +169,6 @@ export const PROVIDERS: ProviderConfig[] = [
     name: "Claude",
     icon: <ClaudeIcon className="w-4 h-4" />,
     baseURL: "https://claude.ai/new",
-    promptParam: "q",
     supportsFeatures: false,
     supportsTemporaryChat: true,
     temporaryChatIcon: <ClaudeIncognitoIcon className="w-4 h-4" />,
@@ -188,7 +185,6 @@ export const PROVIDERS: ProviderConfig[] = [
     name: "Perplexity",
     icon: <PerplexityIcon className="w-4 h-4" />,
     baseURL: "https://www.perplexity.ai/search",
-    promptParam: "q",
     supportsFeatures: false,
     supportsTemporaryChat: false,
     features: [],
