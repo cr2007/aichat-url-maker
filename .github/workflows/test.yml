@@ -45,7 +45,7 @@ jobs:
       # The browser tests drive the production build, so they also cover the
       # prerender step and the chunk split.
       - name: Cache the browser
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
