@@ -1,7 +1,6 @@
 import * as React from "react"
 import { Check, Copy, TriangleAlert } from "lucide-react"
 import { cn, copyText } from "@/lib/utils"
-import { useSound } from "@/lib/use-sound"
 
 interface CopyableInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string
@@ -11,10 +10,6 @@ interface CopyableInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaEl
 function CopyableInput({ value, onCopy, className, ...props }: CopyableInputProps) {
   const [isCopied, setIsCopied] = React.useState(false)
   const [failed, setFailed] = React.useState(false)
-  // Both cues repeat a visible state: the icon and the message below change
-  // at the same moment.
-  const playCopied = useSound("notification.success")
-  const playFailed = useSound("notification.error")
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleCopy = React.useCallback(async () => {
@@ -28,10 +23,8 @@ function CopyableInput({ value, onCopy, className, ...props }: CopyableInputProp
     if (await copyText(value)) {
       setIsCopied(true)
       onCopy?.()
-      playCopied()
     } else {
       setFailed(true)
-      playFailed()
     }
 
     // Step 1.3: return to the resting state after a short time.
@@ -39,7 +32,7 @@ function CopyableInput({ value, onCopy, className, ...props }: CopyableInputProp
       setIsCopied(false)
       setFailed(false)
     }, 2500)
-  }, [value, onCopy, playCopied, playFailed])
+  }, [value, onCopy])
 
   React.useEffect(() => {
     return () => {

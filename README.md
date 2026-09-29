@@ -13,7 +13,6 @@ Why this helps
 - Follows your system light and dark appearance. There is no second setting to keep in sync.
 - Lets you tap a provider or drag between providers. The drag works with a mouse, a pen and a touch screen.
 - Shows the page from the first response, so it appears quickly on a slow connection.
-- Has optional interface sounds. They are off until you turn them on.
 - Shows the link grammar in a table if you have JavaScript off, so you can build a link by hand.
 
 ---

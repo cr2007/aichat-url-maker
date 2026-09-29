@@ -45,7 +45,7 @@ https://cr2007.github.io/aichat-url-maker
 - No API calls to AI providers.
 - No authentication.
 - No analytics.
-- No persistence, except the sound preference. See **Sound**.
+- No persistence. The app stores nothing.
 - No direct usage of AI provider SDKs.
 
 ---
@@ -77,12 +77,6 @@ src/
    ├─ providers.test.ts
    ├─ segmented-control.ts     # Pure indicator geometry for the segmented control
    ├─ segmented-control.test.ts
-   ├─ sound.tsx                # SoundProvider. Loads the engine on demand
-   ├─ sound-context.ts         # Sound context, types, and the stored preference
-   ├─ sound-context.test.ts
-   ├─ sound-engine.tsx         # The lazy chunk. Wraps the vendored provider
-   ├─ use-sound.ts             # useSound and useSoundPreference
-   ├─ sensory-ui/              # Vendored sound library. See its README
    ├─ utils.ts                 # cn() helper and countWords()
    └─ utils.test.ts
 ```
@@ -275,26 +269,9 @@ connection.
   hydration mismatch and discards the markup.
 - The first client render must match the prerender. Do not read `localStorage`
   or `window` during a render. Use `useSyncExternalStore` with a server
-  snapshot, as `SoundProvider` does.
+  snapshot if a value has to come from outside React.
 - `main.tsx` hydrates when the root holds markup and renders when it is empty,
   so `bun dev` needs no prerender.
-
-### Sound
-
-`src/lib/sensory-ui/` is a vendored copy of
-[sensory-ui](https://github.com/SatyamVyas04/sensory-ui) (MIT). ESLint ignores
-it. Its README lists the local changes. Configure the provider in
-`sound-engine.tsx`. Do not edit the vendored files to change behaviour.
-
-- Sound is off until a person turns it on, and the choice is stored. There is
-  no media query for sound, so a stored value is the only way to keep it.
-- The engine loads on demand. `sound.tsx` mounts it only while sound is on, so
-  a person who never opts in never downloads it. Keep that `import()`.
-- Each sound repeats something the interface already shows. Sound is never the
-  only signal.
-- The `interaction` category is off. The provider control and the feature
-  pills are the most used controls, and one of them is draggable, so a cue
-  there would repeat as the selection crosses each segment.
 
 ### No JavaScript
 

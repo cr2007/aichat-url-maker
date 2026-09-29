@@ -1,16 +1,14 @@
-import { Suspense, useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback } from "react"
 import { CopyableInput } from "@/components/copyable-input"
 import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Toggle } from "@/components/ui/toggle"
 import { SegmentedControl } from "@/components/ui/segmented-control"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { MessageCircleDashed, ChevronDown, Copy, Volume2, VolumeX, Check } from "lucide-react"
+import { MessageCircleDashed, ChevronDown, Copy, Check } from "lucide-react"
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn, copyText, countWords } from "@/lib/utils"
-import { SoundProvider } from "@/lib/sound"
-import { useSound, useSoundPreference } from "@/lib/use-sound"
 
 /** The classes for a section label. The rem unit follows the browser text size. */
 const SECTION_LABEL_CLASS = "block text-[0.8125rem] font-medium text-muted-foreground"
@@ -65,34 +63,6 @@ const PILL_CLASS =
   "flex items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 max-w-full whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary transition-[background-color,color,border-color,box-shadow,transform] duration-150 text-sm font-medium"
 
 /**
- * Turns the interface sounds on and off.
- *
- * The control shows the current state through its icon and `aria-pressed`,
- * not through colour alone. Sound is off until a person turns it on, and the
- * engine is only fetched at that point.
- *
- * @returns The toggle.
- */
-function SoundToggle() {
-  const { soundOn, setSoundOn } = useSoundPreference()
-
-  return (
-    <Button
-      id="sound-toggle"
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="size-11"
-      aria-pressed={soundOn}
-      aria-label={soundOn ? "Turn interface sounds off" : "Turn interface sounds on"}
-      onClick={() => setSoundOn(!soundOn)}
-    >
-      {soundOn ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-    </Button>
-  )
-}
-
-/**
  * The page.
  *
  * It holds the prompt field, the provider control, the feature controls and
@@ -116,12 +86,6 @@ function PageContent() {
   // The URL of a failed clipboard write. It clears the same way.
   const [copyFailedURL, setCopyFailedURL] = useState<string | null>(null)
 
-  // Each cue repeats something already on screen. Sound is never the only
-  // signal. See `AGENTS.md > Sound`.
-  const playOpen = useSound("navigation.forward")
-  const playTooLong = useSound("notification.warning")
-  const playDisclosure = useSound(infoOpen ? "overlay.collapse" : "overlay.expand")
-
   const provider = getProvider(selectedProvider)
 
   // A provider that does not support a setting ignores it, but the setting
@@ -137,15 +101,6 @@ function PageContent() {
   const wordCount = countWords(prompt)
   const popupBlocked = blockedURL !== null && blockedURL === url
   const copyFailed = copyFailedURL !== null && copyFailedURL === url
-
-  // Sounds once when the prompt crosses the length threshold, not on every
-  // keystroke past it. The counter and the button label change at the same
-  // moment, so the cue repeats a visible change.
-  const wasTooLong = useRef(isTooLong)
-  useEffect(() => {
-    if (isTooLong && !wasTooLong.current) playTooLong()
-    wasTooLong.current = isTooLong
-  }, [isTooLong, playTooLong])
 
   /**
    * Opens the generated URL in a new tab.
@@ -178,11 +133,7 @@ function PageContent() {
     // Step 1.4: open the tab. Record the URL if the browser blocks the tab.
     const opened = window.open(targetURL, "_blank")
     setBlockedURL(opened ? null : url)
-
-    // Step 1.5: sound the cue only when the tab opened. A blocked popup shows
-    // its own message, and a success cue there would contradict it.
-    if (opened) playOpen()
-  }, [url, prompt, provider, playOpen])
+  }, [url, prompt, provider])
 
   /**
    * Selects a feature, or clears it.
@@ -218,10 +169,7 @@ function PageContent() {
     <main id="app" className="min-h-screen px-4 py-8">
       <div id="app-column" className="max-w-xl mx-auto space-y-5">
         {/* Header */}
-        <div id="app-header" className="relative text-center pt-2">
-          <div className="absolute right-0 top-0">
-            <SoundToggle />
-          </div>
+        <div id="app-header" className="text-center pt-2">
           <h1 id="app-title" className="text-2xl font-semibold tracking-tight pb-0.5">
             AI Prompt URL Generator
           </h1>
@@ -434,10 +382,7 @@ function PageContent() {
             type="button"
             aria-expanded={infoOpen}
             aria-controls="how-it-works-panel"
-            onClick={() => {
-              playDisclosure()
-              setInfoOpen(!infoOpen)
-            }}
+            onClick={() => setInfoOpen(!infoOpen)}
             className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md py-2.5 text-[0.8125rem] text-muted-foreground hover:text-foreground focus-ring transition-[color,scale] duration-150 active:scale-[0.98] motion-reduce:active:scale-100"
           >
             <ChevronDown
@@ -469,20 +414,16 @@ function PageContent() {
 /**
  * The root of the app.
  *
- * It puts the page in a Suspense boundary. `prefers-color-scheme` in
- * `index.css` controls the appearance. There is no theme provider.
+ * `prefers-color-scheme` in `index.css` controls the appearance. There is no
+ * theme provider.
  *
  * @returns The app.
  */
 function App() {
   return (
-    <SoundProvider>
-      <TooltipProvider delayDuration={300}>
-        <Suspense fallback={null}>
-          <PageContent />
-        </Suspense>
-      </TooltipProvider>
-    </SoundProvider>
+    <TooltipProvider delayDuration={300}>
+      <PageContent />
+    </TooltipProvider>
   )
 }
 
