@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  unit:
+    name: Unit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,5 +24,34 @@ jobs:
       - name: Install dependencies
         run: bun i
 
-      - name: Run tests
-        run: bun test
+      - name: Run unit tests
+        run: bun run test
+
+  browser:
+    name: Browser
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun i
+
+      # The browser tests drive the production build, so they also cover the
+      # prerender step and the chunk split.
+      - name: Cache the browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Chromium
+        run: bunx --bun playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: bun run test:browser

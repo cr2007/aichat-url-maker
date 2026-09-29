@@ -39,10 +39,19 @@ And then you can access the web app at http://localhost:5173
 ### Other commands
 
 ```sh
-bun test          # Runs the unit tests
-bun run lint      # Runs ESLint
-bun run build     # Type-checks, builds to dist/, then prerenders the page
+bun run test         # Runs the unit tests
+bun run test:browser # Builds, then runs the browser tests in Chromium
+bun run test:all     # Runs both suites
+bun run lint         # Runs ESLint
+bun run build        # Type-checks, builds to dist/, then prerenders the page
 bun run build:nossg  # Builds without the prerender step
+```
+
+Every test is in `tests/`: `tests/unit/` for the pure functions and
+`tests/browser/` for the built site. The browser suite needs Chromium once:
+
+```sh
+bunx --bun playwright install chromium
 ```
 
 ## Node.js

@@ -5,7 +5,7 @@ import {
   isUrlTooLong,
   resolveOpenAction,
   MAX_SAFE_URL_LENGTH,
-} from "./providers"
+} from "../../src/lib/providers"
 
 describe("getProvider", () => {
   test("resolves every declared provider by id", () => {

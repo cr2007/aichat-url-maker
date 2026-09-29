@@ -9,7 +9,7 @@ import {
   positionFromDrag,
   resolveActiveIndex,
   snapToIndex,
-} from "./segmented-control"
+} from "../../src/lib/segmented-control"
 
 const OPTIONS = [
   { value: "chatgpt" },

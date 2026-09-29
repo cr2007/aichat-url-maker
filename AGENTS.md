@@ -57,8 +57,10 @@ public/
 └─ llms.txt                    # The link grammar, for an agent that finds the site
 scripts/
 ├─ prerender.tsx               # Build step: renders the app into dist/index.html
-├─ prerender-document.ts       # Pure document assembly and the 14KB budget
-└─ prerender-document.test.ts
+└─ prerender-document.ts       # Pure document assembly and the 14KB budget
+tests/
+├─ unit/                       # Pure functions. See Testing
+└─ browser/                    # The built site in Chromium. See Testing
 src/
 ├─ App.tsx                     # Main UI, form state, and URL generation wiring
 ├─ main.tsx                    # React entry point. Hydrates the prerendered markup
@@ -74,11 +76,8 @@ src/
 │     └─ tooltip.tsx           # Feature descriptions on hover and focus
 └─ lib/
    ├─ providers.tsx            # Provider configs, URL builders, oversized-URL fallback
-   ├─ providers.test.ts
    ├─ segmented-control.ts     # Pure indicator geometry for the segmented control
-   ├─ segmented-control.test.ts
-   ├─ utils.ts                 # cn() helper and countWords()
-   └─ utils.test.ts
+   └─ utils.ts                 # cn() helper and countWords()
 ```
 
 There is no theme provider or appearance toggle. See **Appearance** below.
@@ -98,23 +97,65 @@ Runs the app at `http://localhost:5173`.
 
 ## Testing
 
+Every test is in `tests/`, away from the source.
+
 ```sh
-bun test
+bun run test          # the unit tests. Fast, and needs no build
+bun run test:browser  # builds, then drives the build in Chromium
+bun run test:all      # both
 ```
 
-Use `bun:test` for any new tests. Test files are excluded from the TypeScript production build via `tsconfig.app.json`.
+Use `bun:test` for any new test. Test files are outside the TypeScript
+production build.
+
+```
+tests/
+├─ unit/          # Pure functions. No DOM, no browser
+│  ├─ providers.test.ts
+│  ├─ segmented-control.test.ts
+│  ├─ utils.test.ts
+│  └─ prerender-document.test.ts
+└─ browser/       # The built site in Chromium
+   ├─ harness.ts             # Static server, browser, and the page helpers
+   ├─ measure.ts             # Contrast and target size, read from the pixels
+   ├─ accessibility.test.ts
+   ├─ interaction.test.ts
+   └─ rendering.test.ts
+```
+
+### The unit tests
 
 | File | Covers |
 |------|--------|
-| `src/lib/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic |
-| `src/lib/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
-| `src/lib/utils.test.ts` | `countWords` whitespace handling and `cn` class merging |
-| `src/lib/sound-context.test.ts` | `parseSoundPreference`: the default, the stored values, and an unknown value |
-| `scripts/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget |
+| `tests/unit/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic |
+| `tests/unit/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
+| `tests/unit/utils.test.ts` | `countWords` whitespace handling, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
+| `tests/unit/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget |
 
-There is no DOM test suite. A DOM test suite needs more dependencies. Move the pure parts of a component into `src/lib/` instead, as `segmented-control.ts` does for the indicator position. The tests can then use them.
+There is no DOM test suite for a component in isolation. Move the pure parts
+of a component into `src/lib/` instead, as `segmented-control.ts` does for the
+indicator position. The unit tests can then use them.
 
-Some behaviour exists only in a browser: the size of a target, the ARIA attributes, the layout at each width, the contrast and the drag gesture. Check that behaviour with Playwright against the dev server.
+### The browser tests
+
+Some behaviour exists only in a browser: the size of a target, the ARIA
+attributes, the layout at each width, the contrast and the drag gesture.
+
+| File | Covers |
+|------|--------|
+| `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, and reduced motion |
+| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text and `aria-describedby`, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, and a full pass that stores nothing |
+
+Rules for a browser test:
+
+- They drive `dist/`, not the dev server, so they also cover the prerender
+  step. `bun run test:browser` builds first.
+- Contrast comes from the pixels that the browser paints, in `measure.ts`. A
+  token says nothing about a translucent surface over a gradient.
+- Each test opens its own context, so no test sees the storage of another.
+- `openPage` collects every console error. A test can then assert that a flow
+  reported none.
 
 ---
 
@@ -134,7 +175,7 @@ Three workflows live in `.github/workflows/`:
 
 | File | Trigger | What it does |
 |------|---------|--------------|
-| `test.yml` | push to `main`, all PRs | Installs deps and runs `bun test` |
+| `test.yml` | push to `main`, all PRs | Two jobs: `unit` runs the unit tests, `browser` builds and runs the browser tests in Chromium |
 | `deploy.yml` | push to `main`, manual | Builds and deploys to GitHub Pages |
 | `assign-issue.yml` | issue comment | Handles `.take` / `.release` / `.assign` / `.unassign` commands |
 

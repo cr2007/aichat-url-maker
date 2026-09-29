@@ -4,7 +4,7 @@ import {
   buildDocument,
   findStylesheetHref,
   insertMarkup,
-} from "./prerender-document"
+} from "../../scripts/prerender-document"
 
 const SHELL =
   '<!doctype html><html><head>' +
