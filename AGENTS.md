@@ -168,7 +168,7 @@ Three workflows live in `.github/workflows/`:
 - Respect existing design tokens and CSS variables.
 - Prefer composition over custom styling.
 - `hover:` is redefined in `index.css` to gate on `(any-hover: hover)` instead of Tailwind's default `(hover: hover)`, so stylus input (S Pen, Apple Pencil) can trigger hover styles on primarily-touch devices. Don't reintroduce plain `(hover: hover)` gating locally.
-- `ToggleGroupItem` (`toggle-group.tsx`) applies an unconditional `data-[spacing=0]:shadow-none` that lands after most utility classes in the compiled stylesheet, silently canceling any `hover:shadow-*` glow at equal specificity. `toggle.tsx`'s hover shadow utilities use the `!` important modifier to beat it. Keep that `!` if you touch those classes, and expect to need it again for any other `box-shadow` hover effect on a `ToggleGroupItem`.
+- An attribute selector outranks a plain utility class. `ToggleGroupItem` once carried `data-spacing="0"` at all times, which compiled to `[data-spacing="0"]{border-radius:0}` and squared five of the seven feature pills, because that selector beats `rounded-md`. The joined-group classes are gone. Do not bring them back: the pills wrap onto more than one row, and a joined bar cannot wrap.
 - Size text in `rem`, not `px`, so it follows the browser's font-size setting. Do not go below `0.8125rem` (13px) for any text.
 - Every motion must survive `prefers-reduced-motion`. `index.css` has a blanket floor in `@layer base`; prefer a local `motion-reduce:` variant where a component needs something more specific than "near-instant".
 - A hover shadow goes below the control, in the colour of that control. Do not use a symmetric shadow, and do not use a colour from a different part of the palette. Both make a halo.
