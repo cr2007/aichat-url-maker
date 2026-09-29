@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { MessageCircleDashed, ChevronDown, Copy, Volume2, VolumeX, Check } from "lucide-react"
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
-import { cn, countWords } from "@/lib/utils"
+import { cn, copyText, countWords } from "@/lib/utils"
 import { SoundProvider } from "@/lib/sound"
 import { useSound, useSoundPreference } from "@/lib/use-sound"
 
@@ -170,7 +170,9 @@ function PageContent() {
     // a rejected write must reach the person instead of being discarded.
     if (shouldCopyPrompt) {
       setCopyFailedURL(null)
-      navigator.clipboard.writeText(prompt).catch(() => setCopyFailedURL(url))
+      void copyText(prompt).then((copied) => {
+        if (!copied) setCopyFailedURL(url)
+      })
     }
 
     // Step 1.4: open the tab. Record the URL if the browser blocks the tab.

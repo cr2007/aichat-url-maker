@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Check, Copy, TriangleAlert } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, copyText } from "@/lib/utils"
 import { useSound } from "@/lib/use-sound"
 
 interface CopyableInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -22,15 +22,14 @@ function CopyableInput({ value, onCopy, className, ...props }: CopyableInputProp
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
     setFailed(false)
 
-    // Step 1.2: write to the clipboard. A rejection must reach the person.
+    // Step 1.2: write to the clipboard. A failure must reach the person.
     // The clipboard is unavailable on an insecure origin, and a browser can
     // refuse the permission.
-    try {
-      await navigator.clipboard.writeText(value)
+    if (await copyText(value)) {
       setIsCopied(true)
       onCopy?.()
       playCopied()
-    } catch {
+    } else {
       setFailed(true)
       playFailed()
     }

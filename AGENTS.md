@@ -375,6 +375,7 @@ setting changes.
 
 **Critical guidelines:**
 - Do not manually encode query strings - always use `URLSearchParams`.
+- Copy through `copyText` in `src/lib/utils.ts`. Never call `navigator.clipboard.writeText` directly. An insecure origin has no clipboard, so reading `writeText` throws at once, and a `.catch()` on the call never sees it. In `handleOpenInProvider` that killed the handler before `window.open`, and nothing happened at all.
 - Each provider's `buildURL` function handles its specific format.
 - When adding new providers, follow the existing pattern in `src/lib/providers.tsx`.
 - Breaking these rules may silently invalidate generated URLs.

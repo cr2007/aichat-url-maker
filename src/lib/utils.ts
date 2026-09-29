@@ -40,3 +40,33 @@ export function countWords(text: string): number {
   // Step 1.2: remove the empty strings. They are not words.
   return text.split(/\s+/).filter(Boolean).length
 }
+
+/**
+ * Writes text to the clipboard.
+ *
+ * Every failure gives `false`, so one branch covers them all. A direct call to
+ * `navigator.clipboard.writeText` cannot do this: an insecure origin has no
+ * clipboard, so reading `writeText` throws at once, and a `.catch()` on the
+ * call never sees that error.
+ *
+ * @param text - The text to write.
+ * @returns True if the text reached the clipboard.
+ *
+ * @example
+ * ```ts
+ * if (!(await copyText(url))) showTheFallback()
+ * ```
+ */
+export async function copyText(text: string): Promise<boolean> {
+  // Step 1.1: stop if the browser gives no clipboard.
+  if (!navigator.clipboard) return false
+
+  // Step 1.2: write. The browser refuses the permission on some origins,
+  // which rejects.
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
