@@ -194,7 +194,7 @@ describe("the copy button", () => {
     await opened.page.waitForTimeout(300)
 
     const status = await opened.page.evaluate(() =>
-      [...document.querySelectorAll("[role=status]")]
+      [...document.querySelectorAll("[aria-live]")]
         .map((element) => (element.textContent ?? "").trim())
         .join(" ")
     )
@@ -283,7 +283,7 @@ describe("the prompt counter", () => {
 
     const status = () =>
       opened.page.evaluate(
-        () => document.querySelector("#prompt-section [role=status]")?.textContent?.trim() ?? ""
+        () => document.querySelector("#prompt-section [aria-live]")?.textContent?.trim() ?? ""
       )
     await fillPrompt(opened.page)
     expect(await status()).toBe("")
@@ -625,16 +625,16 @@ describe("text selection", () => {
       const walker = document.createTreeWalker(document.getElementById("app")!, NodeFilter.SHOW_TEXT)
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         const element = node.parentElement!
-        if (!node.textContent?.trim() || element.closest("textarea, #url-full")) continue
+        if (!node.textContent?.trim() || element.closest("textarea")) continue
         if (getComputedStyle(element).userSelect !== "none") found.push(node.textContent.trim())
       }
       return found
     })
     expect(selectable).toEqual([])
     const fields = await phone.page.evaluate(() =>
-      ["prompt-input", "generated-url", "url-full"].map((id) => getComputedStyle(document.getElementById(id)!).userSelect)
+      ["prompt-input", "generated-url"].map((id) => getComputedStyle(document.getElementById(id)!).userSelect)
     )
-    expect(fields).toEqual(["text", "text", "text"])
+    expect(fields).toEqual(["text", "text"])
     await phone.close()
   })
 })
@@ -682,6 +682,29 @@ describe("plain use for every reader", () => {
     })
     expect(description).toBeTruthy()
     await opened.close()
+  })
+
+  test("every label, counter and description is a single stop for a screen reader", async () => {
+    // TalkBack on a real phone read the temporary chat name and description
+    // twice, the field labels twice, and the counter twice. A probe page on
+    // the phone showed the markup that reads once.
+    const phone = await openPage({ touch: true, width: 412, height: 740 })
+    await fillPrompt(phone.page)
+    const tree = await phone.page.locator("main").ariaSnapshot()
+    for (const stray of ["text: AI app", "text: Prompt", "text: Features (optional)", "characters", "text: Keeps this chat", "Press and hold"]) {
+      expect(tree).not.toContain(stray)
+    }
+    // An empty role="status" was a stop too: TalkBack said "status".
+    expect(tree).not.toMatch(/^\s*- status/m)
+    expect(tree).toContain('textbox "Prompt"')
+    expect(tree).toContain('radiogroup "AI app"')
+    expect(tree).toContain('group "Features (optional)"')
+    const description = await phone.page.evaluate(() => {
+      const row = document.getElementById("temporary-chat-section")!
+      return document.getElementById(row.getAttribute("aria-describedby")!)?.textContent
+    })
+    expect(description).toContain("Keeps this chat out of your")
+    await phone.close()
   })
 
   test("Ctrl+Enter in the prompt opens the provider", async () => {

@@ -192,7 +192,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 | File | Covers |
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, and the selected states in forced colors |
-| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, a description that a screen reader hears once, a short name for the temporary chat row, Ctrl+Enter to open, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
+| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
 | `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
@@ -303,6 +303,27 @@ for an expert who makes ten links in a row.
 - The prompt has `dir="auto"`, so Arabic and Hebrew run from the right.
 - The link and the counts use the prompt without spaces and new lines at the
   ends.
+
+### Screen readers
+
+TalkBack on a real phone read some controls two or three times. A probe page
+of the candidate markup, read with the TalkBack setting "Display speech
+output" on and recorded, showed which markup reads once. Keep these patterns:
+
+- A visible label of a control is `aria-hidden`, and the control takes its
+  name from it with `aria-labelledby`, or the group has the same
+  `aria-label`. Otherwise TalkBack stops on the label, then reads it again
+  with the control.
+- A button whose visible text is a name and a description (the temporary chat
+  row) has both lines `aria-hidden`, and points `aria-labelledby` and
+  `aria-describedby` at them. Hidden text still counts when an ARIA
+  attribute points at it. Without `aria-hidden` the lines were read as the
+  content of the button and again as its name and hint.
+- A line that is the description of a field (the counter) is `aria-hidden`.
+- A live region has `aria-live` and no role. An empty `role="status"` was
+  a stop, and TalkBack said "status".
+- Copy and Share keep the names "Copy link" and "Share link", so the narrow
+  layout can show their icons only.
 
 ### Font
 

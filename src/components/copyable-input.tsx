@@ -65,7 +65,9 @@ function CopyButton({ value, quiet = false, label = false, disabled = false, cla
         onClick={handleCopy}
         type="button"
         disabled={disabled || !value}
-        aria-label={label ? undefined : "Copy link"}
+        // The name stays "Copy link" with or without the visible word, so a
+        // narrow screen can show the icon only.
+        aria-label="Copy link"
         className={cn(
           "flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md disabled:pointer-events-none disabled:opacity-50",
           label ? "px-3 text-[0.8125rem] font-medium" : "w-11",
@@ -83,13 +85,14 @@ function CopyButton({ value, quiet = false, label = false, disabled = false, cla
         ) : (
           <Copy className="size-4" />
         )}
-        {label && <span>{isCopied ? "Copied" : "Copy"}</span>}
+        {label && <span aria-hidden="true">{isCopied ? "Copied" : "Copy"}</span>}
       </button>
       {/* The result is announced and stays in the layout, so it cannot cover
-          the label above the field. */}
+          the label above the field. A live region with no role: TalkBack
+          stopped on an empty role="status" and said "status". */}
       <p
-        role="status"
         aria-live="polite"
+        aria-atomic="true"
         className={cn(
           "mt-1.5 basis-full text-right text-[0.8125rem]",
           failed ? "text-destructive" : "text-muted-foreground",

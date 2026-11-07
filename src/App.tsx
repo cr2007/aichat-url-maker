@@ -309,7 +309,9 @@ function PageContent() {
           {/* Provider selector */}
           <div id="provider-section" className="space-y-2">
             {/* "Provider" reads as an internet or phone company to many people. */}
-            <span id="provider-label" className={SECTION_LABEL_CLASS}>AI app</span>
+            {/* Hidden from the reading order: the group already has this name.
+                TalkBack on a real phone read it twice before. */}
+            <span id="provider-label" aria-hidden="true" className={SECTION_LABEL_CLASS}>AI app</span>
             <SegmentedControl
               label="AI app"
               options={PROVIDER_OPTIONS}
@@ -321,8 +323,12 @@ function PageContent() {
 
           {/* Prompt */}
           <div id="prompt-section" className="space-y-1.5">
+            {/* The label still focuses the field on a click. A screen reader
+                gets the name from aria-labelledby, so it is one stop. */}
             <label
+              id="prompt-label"
               htmlFor="prompt-input"
+              aria-hidden="true"
               className={SECTION_LABEL_CLASS}
             >
               Prompt
@@ -344,6 +350,7 @@ function PageContent() {
               placeholder="For example: Plan a 3-day trip to Goa"
               // Arabic and Hebrew then run from the right.
               dir="auto"
+              aria-labelledby="prompt-label"
               aria-describedby={hasPrompt ? "prompt-meta" : undefined}
               className="w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-muted-foreground border border-border focus-ring focus:border-primary resize-y"
               rows={4}
@@ -353,6 +360,9 @@ function PageContent() {
                 a live region, because it changes on every key. */}
             <p
               id="prompt-meta"
+              // The field reads this line as its description. Hidden from the
+              // reading order, so it is not read a second time.
+              aria-hidden="true"
               className={cn(
                 "min-h-5 text-[0.8125rem] text-right tabular-nums",
                 isTooLong ? "text-warning font-medium" : "text-muted-foreground"
@@ -372,8 +382,9 @@ function PageContent() {
                 </>
               )}
             </p>
-            {/* One announcement, when the prompt goes over the limit. */}
-            <p role="status" className="sr-only">
+            {/* One announcement, when the prompt goes over the limit. No role,
+                so an empty region is not a stop for TalkBack. */}
+            <p aria-live="polite" aria-atomic="true" className="sr-only">
               {isTooLong ? oversizeMessage : ""}
             </p>
           </div>
@@ -381,7 +392,7 @@ function PageContent() {
           {/* Features. The row folds away on a provider that has none. */}
           <Collapse id="feature-collapse" open={provider.supportsFeatures}>
             <div id="feature-section" className="space-y-2">
-              <span id="feature-label" className={SECTION_LABEL_CLASS}>Features (optional)</span>
+              <span id="feature-label" aria-hidden="true" className={SECTION_LABEL_CLASS}>Features (optional)</span>
               {/* Radix marks each item role="radio" for a single group, but a
                   radio cannot be unchecked. These are toggle buttons: one at a
                   time, and a second press clears the choice. aria-pressed says
@@ -429,6 +440,9 @@ function PageContent() {
                   tooltip on hover. */}
               <p
                 id="feature-hint"
+                // A screen reader already reads each description, and its long
+                // press does something else. The hint is for sight only.
+                aria-hidden="true"
                 className="hidden pointer-coarse:block text-center text-[0.8125rem] text-muted-foreground"
               >
                 Press and hold a feature to see what it does.
@@ -449,12 +463,15 @@ function PageContent() {
               className={TEMPORARY_CHAT_CLASS}
             >
               <span className="flex flex-1 flex-col gap-1 text-left">
-                <span id="temporary-chat-label" className="flex items-center gap-1.5 text-sm font-medium">
+                {/* Both lines are hidden, so they are not read again as content
+                    of the button. aria-labelledby and aria-describedby still
+                    read hidden text. TalkBack read each line twice before. */}
+                <span id="temporary-chat-label" aria-hidden="true" className="flex items-center gap-1.5 text-sm font-medium">
                   {tempProvider.temporaryChatIcon ?? <MessageCircleDashed className="size-4" />}
                   Temporary chat
                 </span>
                 {/* One line on the on state. A person infers the off state. */}
-                <span id="temporary-chat-description" className="text-[0.8125rem] font-normal text-muted-foreground">
+                <span id="temporary-chat-description" aria-hidden="true" className="text-[0.8125rem] font-normal text-muted-foreground">
                   Keeps this chat out of your {tempProvider.name} history.
                 </span>
               </span>
@@ -485,7 +502,9 @@ function PageContent() {
               then make the pinned dock too tall. */}
           <div id="generated-url-section" className="hidden space-y-1.5 @max-[16rem]:block lg:block">
             <label
+              id="generated-url-label"
               htmlFor="generated-url"
+              aria-hidden="true"
               className={SECTION_LABEL_CLASS}
             >
               Your link
@@ -494,6 +513,7 @@ function PageContent() {
                 the same size before and after the first character. */}
             <CopyableInput
               id="generated-url"
+              aria-labelledby="generated-url-label"
               value={url}
               copyDisabled={isTooLong}
               placeholder="Type a prompt to make a link."
