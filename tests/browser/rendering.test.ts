@@ -456,3 +456,22 @@ describe("the dock on a phone", () => {
     await phone.close()
   })
 })
+
+describe("how it works", () => {
+  test("the steps fold open into view, and leave the tab order when closed", async () => {
+    // The steps opened below the screen, so a person saw nothing happen.
+    const phone = await openPage({ touch: true, width: 412, height: 740 })
+    const inView = () =>
+      phone.page.evaluate(() => {
+        const r = document.querySelector("#how-it-works-panel li:last-child")!.getBoundingClientRect()
+        return r.bottom <= innerHeight && r.top >= 0
+      })
+    expect(await phone.page.getAttribute("#how-it-works-panel", "inert")).not.toBeNull()
+    await phone.page.click("#how-it-works-toggle")
+    await phone.page.waitForTimeout(800)
+    expect(await phone.page.getAttribute("#how-it-works-toggle", "aria-expanded")).toBe("true")
+    expect(await phone.page.getAttribute("#how-it-works-panel", "inert")).toBeNull()
+    expect(await inView()).toBe(true)
+    await phone.close()
+  })
+})

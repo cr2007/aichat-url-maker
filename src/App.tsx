@@ -83,16 +83,20 @@ const PILL_CLASS =
  *
  * @param props.id - The id of the wrapper.
  * @param props.open - True to show the content.
+ * @param props.className - Extra classes, such as a margin for a wrapper
+ *   that is not in the column gap.
  * @param props.children - The content.
  * @returns The wrapper.
  */
 function Collapse({
   id,
   open,
+  className,
   children,
 }: {
   id: string
   open: boolean
+  className?: string
   children: ReactNode
 }) {
   return (
@@ -101,7 +105,8 @@ function Collapse({
       inert={!open}
       className={cn(
         "grid transition-[grid-template-rows,opacity,margin] duration-200 ease-out",
-        open ? "grid-rows-[1fr] opacity-100" : "-mt-5 grid-rows-[0fr] opacity-0"
+        open ? "grid-rows-[1fr] opacity-100" : "-mt-5 grid-rows-[0fr] opacity-0",
+        className
       )}
     >
       <div className="-m-1 min-h-0 overflow-hidden p-1">{children}</div>
@@ -210,6 +215,27 @@ function PageContent() {
     // Step 1.1: "" means the person pressed the selected pill again.
     setSelectedFeature(value as Feature)
   }, [])
+
+  /**
+   * Opens or closes the steps under "How it works".
+   *
+   * The steps open at the end of the page, below the screen, so a person
+   * would see nothing happen. After the fold the page scrolls just enough
+   * to show them.
+   */
+  const toggleInfo = useCallback(() => {
+    // Step 1.1: fold the steps open or closed.
+    const next = !infoOpen
+    setInfoOpen(next)
+    if (!next) return
+
+    // Step 1.2: wait for the 200ms fold, then bring the steps into view. A
+    // person who asks for less motion gets a jump, not a glide.
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches
+    setTimeout(() => {
+      document.getElementById("how-it-works-panel")?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" })
+    }, 200)
+  }, [infoOpen])
 
   /**
    * Changes the provider.
@@ -476,29 +502,27 @@ function PageContent() {
             type="button"
             aria-expanded={infoOpen}
             aria-controls="how-it-works-panel"
-            onClick={() => setInfoOpen(!infoOpen)}
+            onClick={toggleInfo}
             className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md py-2.5 text-[0.8125rem] text-muted-foreground hover:text-foreground focus-ring transition-[color,scale] duration-150 active:scale-[0.97] motion-reduce:active:scale-100"
           >
             <ChevronDown
               className={cn(
-                "size-4 transition-transform duration-200",
+                "size-4 transition-transform duration-200 ease-out",
                 infoOpen && "rotate-180"
               )}
             />
             How it works
           </button>
-          {infoOpen && (
-            <ul
-              id="how-it-works-panel"
-              className="mx-auto mt-3 max-w-xl text-[0.8125rem] text-muted-foreground space-y-1.5 list-disc list-inside animate-fade-in"
-            >
-              <li>Select your preferred AI provider above</li>
-              <li>Enter any prompt you would like to use</li>
-              <li>Optionally select features where supported</li>
-              <li>Copy the generated URL to share with others</li>
-              <li>Or click Open in ... to launch it immediately</li>
-            </ul>
-          )}
+          {/* The steps fold open like the feature rows, so the page below
+              moves as one change. The list is a sequence, so it is numbered. */}
+          <Collapse id="how-it-works-panel" open={infoOpen} className="mt-0">
+            <ol className="mx-auto w-fit max-w-xl list-inside list-decimal space-y-1.5 pt-3 text-[0.8125rem] text-muted-foreground">
+              <li>Choose a provider.</li>
+              <li>Type your prompt.</li>
+              <li>Pick a feature, if you want one.</li>
+              <li>Copy the link to share it, or open it in {provider.name}.</li>
+            </ol>
+          </Collapse>
         </div>
       </div>
     </main>
