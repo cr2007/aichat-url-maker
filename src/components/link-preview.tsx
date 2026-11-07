@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from "react"
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { ChevronDown, Link, Share } from "lucide-react"
 import { CopyButton } from "@/components/copyable-input"
 import { cn } from "@/lib/utils"
@@ -40,6 +40,14 @@ function readableUrl(url: string) {
 }
 
 /**
+ * The look of a button inside the bar: no own box, a divider on its left.
+ * Below a column of 22rem the word goes and the icon stays, so the link line
+ * keeps room to be read.
+ */
+const BAR_BUTTON =
+  "h-11 rounded-none border-l border-border bg-transparent @max-[22rem]:w-11 @max-[22rem]:px-0 @max-[22rem]:[&>span]:hidden"
+
+/**
  * The buttons that act on the link: Copy everywhere, and Share on a phone or
  * a tablet that has the share sheet.
  *
@@ -49,139 +57,125 @@ function readableUrl(url: string) {
  * @returns The buttons.
  */
 function LinkActions({ url, share, disabled }: { url: string; share: boolean; disabled: boolean }) {
-  const look = "border border-border bg-secondary"
-  const copy = <CopyButton value={url} quiet label disabled={disabled} className={look} />
-  if (!share) return copy
   return (
     <>
-      {copy}
-      <button
-        type="button"
-        disabled={disabled || !url}
-        // The person can close the sheet. That rejects the promise, and it is not an error.
-        onClick={() => void navigator.share({ url }).catch(() => {})}
-        className={cn(
-          "flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-[0.8125rem] font-medium text-muted-foreground",
-          "transition-[color,background-color,opacity,scale] duration-150 hover:text-foreground hover:bg-muted active:scale-[0.97] motion-reduce:active:scale-100",
-          "focus-ring disabled:pointer-events-none disabled:opacity-50",
-          look
-        )}
-      >
-        <Share aria-hidden="true" className="size-4" />
-        Share
-      </button>
+      <CopyButton value={url} quiet label disabled={disabled} className={BAR_BUTTON} />
+      {share && (
+        <button
+          type="button"
+          disabled={disabled || !url}
+          // The person can close the sheet. That rejects the promise, and it is not an error.
+          onClick={() => void navigator.share({ url }).catch(() => {})}
+          aria-label="Share link"
+          className={cn(
+            "flex shrink-0 items-center justify-center gap-1.5 px-3 text-[0.8125rem] font-medium text-muted-foreground",
+            "transition-[color,background-color,opacity,scale] duration-150 hover:text-foreground hover:bg-muted active:scale-[0.97] motion-reduce:active:scale-100",
+            "focus-ring disabled:pointer-events-none disabled:opacity-50",
+            BAR_BUTTON
+          )}
+        >
+          <Share aria-hidden="true" className="size-4" />
+          <span aria-hidden="true">Share</span>
+        </button>
+      )}
     </>
   )
 }
 
 /**
- * The link on one line, with its Copy and Share buttons. It lives in the pinned
- * dock on a phone.
+ * The link in one box, with its Copy and Share buttons in the bottom right
+ * corner. It lives in the pinned dock on a phone.
  *
- * A tap grows the row into a panel with the full link, as the Feedback
- * button on emilkowal.ski does. The panel is always in the page and covers
- * the whole row. A clip-path shows only its bottom edge, which matches the
- * row exactly, and the open state reveals the rest upward. The dock keeps
- * its size.
+ * Closed, the box shows the first line of the link, and the text stops
+ * before the buttons. A tap on the text opens the box: the text uses the full
+ * width, and the box grows upward to the natural height of the link, because
+ * the dock is pinned to the bottom. The buttons never move. A second tap
+ * closes it. One element changes height, as the Feedback button on
+ * emilkowal.ski does. The motion is short and plain, so it reads as the
+ * expected result of the tap, not as an effect.
  *
  * @param props.url - The generated URL.
  * @param props.tooLong - True while the URL is too long to share.
- * @param props.className - Classes for the row.
- * @returns The row.
+ * @param props.className - Classes for the box.
+ * @returns The box.
  */
 function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
   const [expanded, setExpanded] = useState(false)
-  const toggleRef = useRef<HTMLButtonElement>(null)
-  const closeRef = useRef<HTMLButtonElement>(null)
-  // The server has no navigator, so the first render shows Copy.
+  const boxRef = useRef<HTMLDivElement>(null)
+  const actionsRef = useRef<HTMLDivElement>(null)
+  // The server has no navigator, so the first render shows Copy only.
   const share = useSyncExternalStore(subscribeNever, canShare, () => false)
   const hasUrl = url !== ""
-  // A cleared prompt also closes the panel. Without this the panel opened by
+  // A cleared prompt also closes the box. Without this the box opened by
   // itself at the next key.
   if (!hasUrl && expanded) setExpanded(false)
   const open = expanded && hasUrl
 
-  /**
-   * Opens or closes the panel, and moves the focus with it.
-   *
-   * @param next - True to open the panel.
-   */
-  const setOpen = (next: boolean) => {
-    // Step 1.1: change the state. The panel leaves `inert` in the render.
-    setExpanded(next)
-
-    // Step 1.2: move the focus in the next frame, after the render. Without
-    // `preventScroll` the focus scrolls the page on every open and close.
-    requestAnimationFrame(() => (next ? closeRef : toggleRef).current?.focus({ preventScroll: true }))
-  }
+  // The closed text stops before the buttons. Their width changes with Share
+  // and with the narrow layout, so it is measured, not guessed.
+  useLayoutEffect(() => {
+    const actions = actionsRef.current
+    if (!actions) return
+    const observer = new ResizeObserver(() =>
+      boxRef.current?.style.setProperty("--actions-width", `${actions.offsetWidth}px`)
+    )
+    observer.observe(actions)
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <div id="url-preview" className={cn("relative", className)}>
-      {/* The row under the panel leaves the tab order while the panel is open. */}
-      <div className="flex flex-wrap items-center gap-1.5" inert={open}>
-        <button
-          ref={toggleRef}
-          id="url-preview-toggle"
-          type="button"
-          disabled={!hasUrl}
-          aria-expanded={open}
-          aria-controls="url-full-panel"
-          onClick={() => setOpen(true)}
-          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3 text-left text-[0.8125rem] text-muted-foreground focus-ring transition-[color,background-color,scale] duration-150 hover:text-foreground active:scale-[0.97] disabled:active:scale-100 motion-reduce:active:scale-100"
-        >
-          <Link aria-hidden="true" className="size-4 shrink-0" />
-          {hasUrl && <span className="sr-only">Show the full link: </span>}
-          <span className="min-w-0 flex-1 truncate">
-            {hasUrl ? readableUrl(url) : "Type a prompt to make a link."}
-          </span>
-          {hasUrl && <ChevronDown aria-hidden="true" className="size-4 shrink-0 rotate-180" />}
-        </button>
-        <LinkActions url={url} share={share} disabled={tooLong} />
-      </div>
-      <div
-        id="url-full-panel"
-        data-open={open}
-        inert={!open}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") setOpen(false)
-        }}
-        // A tap outside closes the panel, so it does not cover the pills.
-        // The focus stays where the person put it.
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false)
-        }}
-        className={cn(
-          "group absolute inset-x-0 bottom-0 flex flex-col rounded-md border border-border bg-secondary shadow-lg",
-          // On close the panel stays visible until the clip is back on the
-          // row. On open it is visible at once, so the focus can move into it
-          // in the next frame.
-          "invisible [clip-path:inset(calc(100%-2.75rem)_0_0_0_round_0.375rem)] [transition:clip-path_250ms_var(--ease-out),visibility_0s_linear_250ms]",
-          "data-[open=true]:visible data-[open=true]:[clip-path:inset(0_0_0_0_round_0.375rem)] data-[open=true]:[transition:clip-path_250ms_var(--ease-out),visibility_0s]"
-        )}
+    <div
+      ref={boxRef}
+      id="url-preview"
+      data-open={open}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setExpanded(false)
+      }}
+      // A tap outside closes the box, so it does not cover the page for long.
+      // The focus stays where the person put it.
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false)
+      }}
+      className={cn("group relative overflow-hidden rounded-md border border-border bg-secondary", className)}
+    >
+      <button
+        id="url-preview-toggle"
+        type="button"
+        disabled={!hasUrl}
+        aria-expanded={open}
+        aria-controls="url-full"
+        onClick={() => setExpanded(!open)}
+        className="flex min-h-11 w-full items-start gap-2 py-3 pl-3 pr-[calc(var(--actions-width,0px)+0.75rem)] text-left text-[0.8125rem] leading-5 text-muted-foreground focus-ring transition-[color,background-color] duration-150 hover:text-foreground group-data-[open=true]:pr-3 group-data-[open=true]:text-foreground"
       >
-        {/* The box grows first. The text fades in behind it. */}
-        <div className="opacity-0 transition-opacity duration-150 ease-out group-data-[open=true]:opacity-100 group-data-[open=true]:delay-75">
-          <p className="px-3 pt-2.5 text-[0.8125rem] text-muted-foreground">Your link</p>
-          <p
-            id="url-full"
-            className="max-h-48 overflow-y-auto px-3 pt-1 pb-2 text-[0.8125rem] break-all text-foreground select-text"
-          >
-            {url}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-dashed border-border">
-          <button
-            ref={closeRef}
-            id="url-full-close"
-            type="button"
-            onClick={() => setOpen(false)}
-            className="flex min-h-11 flex-1 items-center gap-2 px-3 text-left text-[0.8125rem] text-muted-foreground focus-ring hover:text-foreground"
-          >
-            <span className="flex-1">Hide the full link</span>
-            <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
-          </button>
-          <LinkActions url={url} share={share} disabled={tooLong} />
-        </div>
+        <Link aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+        {hasUrl && <span className="sr-only">{open ? "Hide the full link: " : "Show the full link: "}</span>}
+        {/* One line while closed. While open, the natural height of the link,
+            plus room at the bottom for the buttons. The open takes 250ms and
+            the close 200ms, on the app ease-out curve. */}
+        <span
+          id="url-full"
+          className="relative block h-5 min-w-0 flex-1 overflow-hidden wrap-anywhere [interpolate-size:allow-keywords] transition-[height] duration-200 ease-out group-data-[open=true]:h-auto group-data-[open=true]:max-h-60 group-data-[open=true]:overflow-y-auto group-data-[open=true]:pb-11 group-data-[open=true]:duration-250"
+        >
+          {hasUrl ? readableUrl(url) : "Type a prompt to make a link."}
+          {/* The fade at the end of the first line says that there is more. */}
+          {hasUrl && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-0 right-0 h-5 w-10 bg-linear-to-l from-secondary transition-opacity duration-150 group-data-[open=true]:opacity-0"
+            />
+          )}
+        </span>
+        {/* Up while closed: the box opens upward. Down while open. */}
+        {hasUrl && (
+          <ChevronDown
+            aria-hidden="true"
+            className="mt-0.5 size-4 shrink-0 rotate-180 transition-transform duration-250 ease-out group-data-[open=true]:rotate-0"
+          />
+        )}
+      </button>
+      {/* The buttons never move: the bottom right corner in both states. */}
+      <div ref={actionsRef} className="absolute right-0 bottom-0 flex bg-secondary">
+        <LinkActions url={url} share={share} disabled={tooLong} />
       </div>
     </div>
   )

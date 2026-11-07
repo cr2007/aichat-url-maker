@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
-import { fillPrompt, generatedUrl, openPage, startHarness, stopHarness, OVERSIZED_PROMPT } from "./harness"
+import { fillPrompt, openPage, startHarness, stopHarness, OVERSIZED_PROMPT } from "./harness"
 
 /** The widths that the layout must hold, in pixels. */
 const WIDTHS = [320, 375, 414, 768, 1024]
@@ -406,41 +406,44 @@ describe("the dock on a phone", () => {
     await phone.close()
   })
 
-  test("a tap on the link line grows it into a panel with the whole link", async () => {
+  test("a tap on the link line grows the box upward, and a second tap closes it", async () => {
+    // The text grows to its full length and the buttons stay in the corner.
+    // The focus stays on the toggle, and the page does not scroll.
     const phone = await openPage({ touch: true, width: 412, height: 740 })
     await fillPrompt(phone.page)
     const toggle = phone.page.locator("#url-preview-toggle")
-    expect(await toggle.getAttribute("aria-expanded")).toBe("false")
-    expect(await phone.page.isVisible("#url-full-panel")).toBe(false)
-    // The focus move once scrolled the page on every open and close.
-    const scrollY = () => phone.page.evaluate(() => scrollY)
-    const before = await scrollY()
-
-    // A raw tap. A locator tap scrolls the element into view first.
+    const rects = () =>
+      phone.page.evaluate(() => ({
+        box: document.getElementById("url-preview")!.getBoundingClientRect().top,
+        bar: document.querySelector('#url-preview button[aria-label="Copy link"]')!.getBoundingClientRect().top,
+        text: document.getElementById("url-full")!.getBoundingClientRect().height,
+        scroll: scrollY,
+      }))
+    const closed = await rects()
+    expect(closed.text).toBeLessThan(25)
     const line = (await toggle.boundingBox())!
-    await phone.page.touchscreen.tap(line.x + 40, line.y + line.height / 2)
-    await phone.page.waitForTimeout(400)
-    expect(await toggle.getAttribute("aria-expanded")).toBe("true")
-    const open = await phone.page.evaluate(() => {
-      const panel = document.getElementById("url-full-panel")!.getBoundingClientRect()
-      const line = document.getElementById("url-preview-toggle")!.getBoundingClientRect()
-      return {
-        text: document.getElementById("url-full")!.textContent,
-        focus: document.activeElement?.id,
-        grewUp: panel.top < line.top - 20,
-        sameBottom: Math.abs(panel.bottom - line.bottom) < 1,
-      }
-    })
-    expect(open.text).toBe(await generatedUrl(phone.page))
-    expect(open).toMatchObject({ focus: "url-full-close", grewUp: true, sameBottom: true })
-    expect(await scrollY()).toBe(before)
+    const tap = () => phone.page.touchscreen.tap(line.x + 40, line.y + line.height / 2)
 
-    await phone.page.keyboard.press("Escape")
-    await phone.page.waitForTimeout(400)
-    expect(await toggle.getAttribute("aria-expanded")).toBe("false")
+    await tap()
+    await phone.page.waitForTimeout(450)
+    const open = await rects()
+    expect(await toggle.getAttribute("aria-expanded")).toBe("true")
+    expect(await phone.page.textContent("#url-full")).toContain("Summarize this paper.")
+    expect(open.box).toBeLessThan(closed.box - 20)
+    expect(open.bar).toBe(closed.bar)
+    expect(open.scroll).toBe(closed.scroll)
     expect(await phone.page.evaluate(() => document.activeElement?.id)).toBe("url-preview-toggle")
-    expect(await scrollY()).toBe(before)
-    expect(await phone.page.isVisible("#url-full-panel")).toBe(false)
+
+    await tap()
+    await phone.page.waitForTimeout(450)
+    expect(await toggle.getAttribute("aria-expanded")).toBe("false")
+    expect((await rects()).text).toBeLessThan(25)
+
+    await tap()
+    await phone.page.waitForTimeout(450)
+    await phone.page.keyboard.press("Escape")
+    await phone.page.waitForTimeout(450)
+    expect(await toggle.getAttribute("aria-expanded")).toBe("false")
     await phone.close()
   })
 
@@ -484,18 +487,22 @@ describe("the dock on a phone, worst cases", () => {
   const PHONE = { touch: true, width: 320, height: 640 } as const
   const SHARE_STUB = "navigator.share = async () => {}"
 
-  test("the open panel covers the whole row", async () => {
-    // The panel covered the link line only, and the page behind showed as a
-    // stray box beside it.
+  test("the box is one element, and a tap during the close opens it again", async () => {
+    // The open panel was a second box over the row, with a second set of
+    // buttons. At the end of the close the row swapped back in.
     const phone = await openPage(PHONE)
     await fillPrompt(phone.page)
+    expect(await phone.page.locator("#url-preview button", { hasText: "Copy" }).count()).toBe(1)
     const line = (await phone.page.locator("#url-preview-toggle").boundingBox())!
-    await phone.page.touchscreen.tap(line.x + 30, line.y + line.height / 2)
-    await phone.page.waitForTimeout(400)
-    const [panel, row] = await phone.page.evaluate(() =>
-      ["url-full-panel", "url-preview"].map((id) => document.getElementById(id)!.getBoundingClientRect().width)
-    )
-    expect(panel).toBe(row)
+    const tap = () => phone.page.touchscreen.tap(line.x + 30, line.y + line.height / 2)
+    await tap()
+    await phone.page.waitForTimeout(450)
+    await tap()
+    await phone.page.waitForTimeout(60)
+    await tap()
+    await phone.page.waitForTimeout(450)
+    expect(await phone.page.getAttribute("#url-preview-toggle", "aria-expanded")).toBe("true")
+    expect(await phone.page.evaluate(() => document.getElementById("url-full")!.getBoundingClientRect().height)).toBeGreaterThan(40)
     await phone.close()
   })
 

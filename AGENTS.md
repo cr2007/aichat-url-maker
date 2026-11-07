@@ -193,7 +193,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, and the selected states in forced colors |
 | `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, a description that a screen reader hears once, a short name for the temporary chat row, Ctrl+Enter to open, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, the open panel over the whole row, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
 
@@ -496,14 +496,20 @@ left, the result on the right.
   The test is `(pointer: coarse)` and `navigator.share`: the device type,
   not the screen width. The share sheet needs a secure origin, so a page on
   plain http gets Copy only.
-- A tap on the link line grows the row into a panel with the full link
-  (`#url-full-panel`), as the Feedback button on emilkowal.ski does. The
-  panel covers the whole row, and its bottom row holds the same buttons. A
-  clip-path reveals it upward, so the dock keeps its size. The row under it is
-  `inert` while it is open. The text in `#url-full` can be selected. Focus
-  moves into the panel and back without a scroll. Escape closes it, and so
-  does a tap outside. The row is `LinkPreview` in `link-preview.tsx`. Every
-  copy button is `CopyButton` in `copyable-input.tsx`.
+- The link, Copy and Share are one box, `LinkPreview` in `link-preview.tsx`.
+  Closed, the box shows one line of the link, with a fade at its end, and the
+  text stops before the buttons. A tap on the text (`#url-preview-toggle`)
+  opens it: the text uses the full width and grows to its natural height
+  (`height: auto` with `interpolate-size`), and the box grows upward. A
+  second tap, Escape, or a tap outside closes it. The focus stays on the
+  toggle. Copy and Share never move: they are pinned to the bottom right
+  corner, and the closed text keeps clear of their measured width.
+- The motion must go unnoticed: open 250ms, close 200ms, `--ease-out`, one
+  element, no swap and no crossfade. A CSS transition turns around from where
+  it is, so a tap during the motion reverses it. A browser without
+  `interpolate-size` opens the box at once. Frame strips at 10 percent speed
+  (CDP `Animation.setPlaybackRate`) are the check. Every copy button is
+  `CopyButton` in `copyable-input.tsx`.
 - While the link is too long to open, Copy and Share are off. The open button
   copies the prompt instead.
 - With large text the link line would make the dock too tall. `#app` is a
