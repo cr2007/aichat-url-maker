@@ -69,6 +69,23 @@ describe("Perplexity buildURL", () => {
     const parsed = new URL(p.buildURL("hello world", "", false))
     expect(parsed.searchParams.get("q")).toBe("hello world")
   })
+
+  test("a mode goes into focus, and Pro Search sets copilot", () => {
+    const cases: [Feature, string][] = [
+      ["scholar", "https://www.perplexity.ai/search?q=hi&focus=scholar"],
+      ["reddit", "https://www.perplexity.ai/search?q=hi&focus=reddit"],
+      ["youtube", "https://www.perplexity.ai/search?q=hi&focus=youtube"],
+      ["wolfram", "https://www.perplexity.ai/search?q=hi&focus=wolfram"],
+      ["writing", "https://www.perplexity.ai/search?q=hi&focus=writing"],
+      ["pro", "https://www.perplexity.ai/search?q=hi&copilot=true"],
+      ["", "https://www.perplexity.ai/search?q=hi"],
+    ]
+    for (const [feature, expected] of cases) expect(p.buildURL("hi", feature, false)).toBe(expected)
+  })
+
+  test("the pills are the six modes, each with its own value", () => {
+    expect(p.features.map((f) => f.value)).toEqual(["scholar", "reddit", "youtube", "wolfram", "writing", "pro"])
+  })
 })
 
 describe("URL length safety threshold", () => {
@@ -117,6 +134,8 @@ describe("resolveOpenAction", () => {
       ["chatgpt", "", false, "https://chatgpt.com/"],
       ["claude", "", true, "https://claude.ai/new?incognito"],
       ["perplexity", "", false, "https://www.perplexity.ai/search"],
+      ["perplexity", "scholar", false, "https://www.perplexity.ai/search?focus=scholar"],
+      ["perplexity", "pro", false, "https://www.perplexity.ai/search?copilot=true"],
     ]
     for (const [id, feature, temporary, expected] of cases) {
       const target = getProvider(id)

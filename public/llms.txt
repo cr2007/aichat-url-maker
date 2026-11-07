@@ -42,8 +42,13 @@ Base: `https://www.perplexity.ai/search`
 | Parameter | Value | Required |
 |---|---|---|
 | `q` | The prompt | yes |
+| `focus` | One of `scholar`, `reddit`, `youtube`, `wolfram`, `writing` | no |
+| `copilot` | `true` turns on Pro Search | no |
 
-Example: `https://www.perplexity.ai/search?q=Explain+TCP+slow+start`
+Perplexity does not document `focus` or `copilot`. Third-party guides list
+them, and they are not confirmed to work.
+
+Example: `https://www.perplexity.ai/search?q=Explain+TCP+slow+start&focus=scholar`
 
 ## Length limit
 

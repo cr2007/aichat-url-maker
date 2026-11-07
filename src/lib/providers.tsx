@@ -6,19 +6,31 @@ import {
   ShoppingCart,
   GraduationCap,
   SquarePen,
+  Library,
+  MessagesSquare,
+  Video,
+  Sigma,
+  PenLine,
+  Telescope,
 } from "lucide-react"
 import { ChatGPTIcon, ClaudeIcon, ClaudeIncognitoIcon, PerplexityIcon } from "@/components/provider-icons"
 
 /** The id of a provider. It is also the value of the provider control. */
 export type ProviderId = "chatgpt" | "claude" | "perplexity"
-/** A feature value for the `hints` parameter. An empty string means no feature. */
-export type Feature = "search" | "image" | "think" | "research" | "shopping" | "study" | "canvas" | ""
+/**
+ * A feature. ChatGPT puts it in `hints`. Perplexity puts it in `focus`, and
+ * "pro" sets `copilot=true`. An empty string means no feature.
+ */
+export type Feature =
+  | "search" | "image" | "think" | "research" | "shopping" | "study" | "canvas"
+  | "scholar" | "reddit" | "youtube" | "wolfram" | "writing" | "pro"
+  | ""
 
 /** One feature that a provider can switch on. */
 export interface FeatureOption {
   /** The visible text, and the accessible name. */
   label: string
-  /** The value that goes into the `hints` parameter. */
+  /** The value that the provider puts in its link. */
   value: Feature
   /** A decorative mark. The label gives the name. */
   icon: React.ReactNode
@@ -93,6 +105,49 @@ const CHATGPT_FEATURES: FeatureOption[] = [
   },
 ]
 
+/**
+ * Perplexity modes. Third-party guides from 2024 to 2026 list these values,
+ * but Perplexity documents none of them. A live test must confirm each one.
+ */
+const PERPLEXITY_FEATURES: FeatureOption[] = [
+  {
+    label: "Academic",
+    value: "scholar",
+    icon: <Library className="w-4 h-4" />,
+    description: "Searches published papers.",
+  },
+  {
+    label: "Social",
+    value: "reddit",
+    icon: <MessagesSquare className="w-4 h-4" />,
+    description: "Searches what people say on Reddit.",
+  },
+  {
+    label: "Video",
+    value: "youtube",
+    icon: <Video className="w-4 h-4" />,
+    description: "Searches YouTube videos.",
+  },
+  {
+    label: "Math",
+    value: "wolfram",
+    icon: <Sigma className="w-4 h-4" />,
+    description: "Solves and calculates with Wolfram|Alpha.",
+  },
+  {
+    label: "Writing",
+    value: "writing",
+    icon: <PenLine className="w-4 h-4" />,
+    description: "Writes without a web search.",
+  },
+  {
+    label: "Pro Search",
+    value: "pro",
+    icon: <Telescope className="w-4 h-4" />,
+    description: "Asks follow-up questions and reads more sources.",
+  },
+]
+
 /** Every provider, in the order of the provider control. */
 export const PROVIDERS: ProviderConfig[] = [
   {
@@ -132,12 +187,15 @@ export const PROVIDERS: ProviderConfig[] = [
     name: "Perplexity",
     icon: <PerplexityIcon className="w-4 h-4" />,
     baseURL: "https://www.perplexity.ai/search",
-    supportsFeatures: false,
+    supportsFeatures: true,
     supportsTemporaryChat: false,
-    features: [],
-    buildURL(prompt) {
+    features: PERPLEXITY_FEATURES,
+    buildURL(prompt, feature) {
       const url = new URL(this.baseURL)
       url.searchParams.set("q", prompt)
+      // Pro Search is its own parameter. Every other mode is a focus.
+      if (feature === "pro") url.searchParams.set("copilot", "true")
+      else if (feature) url.searchParams.set("focus", feature)
       return url.toString()
     },
   },
