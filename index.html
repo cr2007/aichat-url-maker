@@ -61,14 +61,21 @@
         right when it does not.
       -->
       <style>
+        /* Hallmark · scope: app · genre: modern-minimal · theme: existing, the page without JavaScript · v2.0.0 */
         #root { display: none; }
+        html,
+        body {
+          overflow-x: clip;
+        }
 
         /*
          * Each colour reads an app token first and falls back to the same
          * value written out. The page therefore matches the app when the
          * stylesheet loads, and keeps the palette when it does not.
          */
-        .noscript-page {
+        :root {
+          --ns-font: "Instrument Sans", system-ui, -apple-system, sans-serif;
+          --ns-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, #c4d8ff73 0%, transparent 100%);
           --ns-fg: #0a0a0a;
           --ns-muted: #4d4d4d;
           --ns-border: #bebebe;
@@ -77,16 +84,14 @@
           --ns-link: #3363d2;
         }
         body {
-          background-color: var(--background, #ffffff);
-          background-image: var(
-            --bg-gradient,
-            radial-gradient(ellipse 100% 45% at 50% 0%, #c4d8ff73 0%, transparent 100%)
-          );
+          background-color: var(--background, var(--ns-surface));
+          background-image: var(--bg-gradient, var(--ns-gradient));
           background-attachment: fixed;
           margin: 0;
         }
         @media (prefers-color-scheme: dark) {
-          .noscript-page {
+          :root {
+            --ns-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, #09183b80 0%, transparent 100%);
             --ns-fg: #fafafa;
             --ns-muted: #a1a1a1;
             --ns-border: #232323;
@@ -94,20 +99,13 @@
             --ns-surface: #0a0a0a;
             --ns-link: #6591f1;
           }
-          body {
-            background-color: var(--background, #0a0a0a);
-            background-image: var(
-              --bg-gradient,
-              radial-gradient(ellipse 100% 45% at 50% 0%, #09183b80 0%, transparent 100%)
-            );
-          }
         }
 
         .noscript-page {
           max-width: 44rem;
           margin: 0 auto;
           padding: 3rem 1rem 4rem;
-          font-family: "Instrument Sans", system-ui, -apple-system, sans-serif;
+          font-family: var(--ns-font);
           color: var(--foreground, var(--ns-fg));
           line-height: 1.5;
         }
@@ -116,6 +114,7 @@
           font-size: 1.5rem;
           font-weight: 600;
           letter-spacing: -0.01em;
+          text-wrap: balance;
         }
         .noscript-lead {
           margin: 0 0 1rem;
@@ -129,6 +128,7 @@
           border: 1px solid var(--border, var(--ns-border));
           border-radius: 0.5rem;
           background: var(--secondary, var(--ns-panel));
+          color: var(--foreground, var(--ns-fg));
           padding: 0 1rem;
         }
         .noscript-panel > summary {

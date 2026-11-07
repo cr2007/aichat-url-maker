@@ -1,3 +1,6 @@
+/* Hallmark · scope: app · genre: modern-minimal · theme: existing (indigo 264, Instrument Sans) · posture: committed · states: 8 · v2.0.0 */
+/* Hallmark · pre-emit critique: the open button is the one tinted control; weakest: the link box still animates height, kept on purpose */
+/* Hallmark · waive 23 · the wash is --bg-gradient, a 0.45 alpha indigo tint of the paper · the page wash tints the paper behind the prompt, it is not an accent fill */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -88,6 +91,7 @@
    Tailwind curve. */
 @theme {
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --font-sans: "Instrument Sans", system-ui, -apple-system, sans-serif;
   --default-transition-timing-function: var(--ease-out);
 }
 
@@ -130,6 +134,8 @@
      Do not use --background here. That value inverts the effect. */
   --segment-track: oklch(0.49 0.03 264 / 0.09);
   --segment-thumb: oklch(0.995 0.005 264);
+  --segment-thumb-shadow: oklch(0.145 0.005 264 / 0.08);
+  --segment-thumb-drop: oklch(0.145 0.005 264 / 0.32);
   /* Liquid Glass. These values apply to the indicator during a press only.
      HIG materials.md > Liquid Glass keeps glass out of the content layer.
      There is one exception: "controls in the content layer with a transient
@@ -177,6 +183,8 @@
       --warning: oklch(0.692 0.14 70);
       --segment-track: oklch(1 0 0 / 0.06);
       --segment-thumb: oklch(0.32 0.005 264);
+      --segment-thumb-shadow: oklch(0 0 0 / 0.08);
+      --segment-thumb-drop: oklch(0 0 0 / 0.32);
       --segment-thumb-glass: oklch(0.62 0.15 264 / 0.6);
       --segment-thumb-specular: oklch(1 0 0 / 0.34);
       --segment-thumb-underglow: oklch(0.67 0.15 264 / 0.4);
@@ -222,7 +230,7 @@
 .segment-indicator {
   background-color: var(--segment-thumb);
   background-image: none;
-  box-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.08);
+  box-shadow: 0 1px 2px 0 var(--segment-thumb-shadow);
   transition:
     background-color 220ms var(--ease-out),
     box-shadow 220ms var(--ease-out),
@@ -248,7 +256,7 @@
     inset 0 -6px 12px -6px var(--segment-thumb-underglow),
     /* The glow and the shadow that lift the glass off the track. */
     0 0 16px 0 var(--segment-thumb-glow),
-    0 8px 20px -8px oklch(0 0 0 / 0.32);
+    0 8px 20px -8px var(--segment-thumb-drop);
 }
 
 /* The indicator follows the pointer exactly during a drag. Remove the
@@ -396,9 +404,25 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* No element can make the page scroll sideways. clip, not hidden, keeps
+     the sticky dock working. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+  /* The parts the browser draws take the palette too. */
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+  html {
+    scrollbar-color: var(--input) transparent;
+  }
+  textarea {
+    caret-color: var(--primary);
+  }
   body {
     @apply bg-background text-foreground;
-    font-family: "Instrument Sans", system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
     background-image: var(--bg-gradient);
     background-attachment: fixed;
   }
