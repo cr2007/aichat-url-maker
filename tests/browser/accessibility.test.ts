@@ -204,3 +204,30 @@ describe("forced colors", () => {
     await opened.close()
   })
 })
+
+describe("hover on the open button", () => {
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`raises the contrast with one opaque step and no glow, ${colorScheme}`, async () => {
+      // The hover was the fill at 90 percent plus a glow in the button colour.
+      // The page showed through the fill, so the label lost contrast in both
+      // appearances, and the glow was a second signal.
+      const opened = await openPage({ colorScheme, width: 1280, height: 800 })
+      await fillPrompt(opened.page)
+      const read = () =>
+        opened.page.evaluate(() => {
+          const style = getComputedStyle(document.getElementById("open-in-provider")!)
+          return { fill: style.backgroundColor, shadow: style.boxShadow }
+        })
+      const lightness = (colour: string) => Number(/^okl(?:ab|ch)\(([\d.]+)/.exec(colour)?.[1])
+      const rest = await read()
+      await opened.page.hover("#open-in-provider")
+      await opened.page.waitForTimeout(300)
+      const hover = await read()
+      expect(hover.fill).not.toContain("/")
+      if (colorScheme === "light") expect(lightness(hover.fill)).toBeLessThan(lightness(rest.fill))
+      else expect(lightness(hover.fill)).toBeGreaterThan(lightness(rest.fill))
+      expect(hover.shadow.replace(/rgba\(0, 0, 0, 0\) 0px 0px 0px 0px,? ?/g, "").trim()).toMatch(/^(none)?$/)
+      await opened.close()
+    })
+  }
+})

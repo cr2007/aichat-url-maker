@@ -7,13 +7,9 @@ import { cn } from "@/lib/utils"
 /**
  * The classes for a button.
  *
- * Hover does not fade the button. A fade dims the label with the background,
- * and the button then looks disabled, especially in dark mode. Each variant
- * changes its own fill instead, and a filled variant also lifts.
- *
- * A lift is a shadow below the button, in the colour of that button. Do not
- * use a symmetric glow, and do not use a colour from a different part of the
- * palette. Such a shadow makes a halo around the button.
+ * Hover is one opaque step toward the page text colour: darker in light
+ * mode, lighter in dark mode, so the label gains contrast. Do not fade the
+ * fill or add a glow. Both lower the contrast or look generated.
  *
  * Every variant has a press state. HIG buttons.md > Best practices: "Always
  * include a press state for a custom button."
@@ -38,7 +34,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_4px_12px_-4px] hover:shadow-primary/50",
+          "bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary),var(--foreground)_14%)]",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 hover:shadow-[0_4px_12px_-4px] hover:shadow-destructive/50 dark:bg-destructive/60",
         outline:
