@@ -2,24 +2,18 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { cn, copyText, countCharacters, countWords } from "../../src/lib/utils"
 
 describe("countWords", () => {
-  test("counts plain words", () => {
+  test("counts words, and ignores spaces at the ends and in runs", () => {
     expect(countWords("hello world")).toBe(2)
     expect(countWords("one")).toBe(1)
+    expect(countWords("  hello world  ")).toBe(2)
+    expect(countWords("hello     world")).toBe(2)
+    expect(countWords("hello\n\nworld\tagain")).toBe(3)
   })
 
   test("returns 0 for empty or whitespace-only input", () => {
     expect(countWords("")).toBe(0)
     expect(countWords("   ")).toBe(0)
     expect(countWords("\n\t  \n")).toBe(0)
-  })
-
-  test("ignores leading and trailing whitespace", () => {
-    expect(countWords("  hello world  ")).toBe(2)
-  })
-
-  test("collapses runs of whitespace", () => {
-    expect(countWords("hello     world")).toBe(2)
-    expect(countWords("hello\n\nworld\tagain")).toBe(3)
   })
 
   test("counts a realistic multiline prompt", () => {
@@ -30,11 +24,8 @@ describe("countWords", () => {
 })
 
 describe("countWords in scripts without spaces", () => {
-  test("counts the words of a Chinese sentence, not one", () => {
+  test("counts the words of a Chinese and a Thai sentence, not one each", () => {
     expect(countWords("\u4ECA\u5929\u5929\u6C14\u5F88\u597D")).toBeGreaterThan(1)
-  })
-
-  test("counts the words of a Thai sentence, not one", () => {
     expect(countWords("\u0E09\u0E31\u0E19\u0E23\u0E31\u0E01\u0E04\u0E38\u0E13")).toBeGreaterThan(1)
   })
 
@@ -68,15 +59,9 @@ describe("countCharacters", () => {
 })
 
 describe("cn", () => {
-  test("merges class names", () => {
+  test("joins names, drops falsy values, and lets the last Tailwind utility win", () => {
     expect(cn("a", "b")).toBe("a b")
-  })
-
-  test("drops falsy values", () => {
     expect(cn("a", false, undefined, null, "b")).toBe("a b")
-  })
-
-  test("last conflicting Tailwind utility wins", () => {
     expect(cn("px-2", "px-4")).toBe("px-4")
   })
 })

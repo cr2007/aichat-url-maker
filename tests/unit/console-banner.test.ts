@@ -10,7 +10,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u
  * It sits outside {@link EMOJI} on purpose. In a character class it joins the
  * character beside it, which makes the class match something else.
  */
-const EMOJI_SELECTOR = "️"
+const EMOJI_SELECTOR = "\uFE0F"
 
 /** The art, without the marker and the blank lines around it. */
 function rows(): string[] {
@@ -24,47 +24,33 @@ describe("bannerArguments", () => {
     expect(message.match(/%c/g)).toHaveLength(styles.length)
   })
 
-  test("the art is a block of many rows", () => {
+  test("the art is a block of many rows, all one width, none past 80", () => {
+    const widths = new Set(rows().map((row) => [...row].length))
     expect(rows().length).toBeGreaterThan(20)
-  })
-
-  test("no row is wider than 80 columns", () => {
+    // The paper is the background of the text. A short row leaves a notch.
+    expect([...widths]).toHaveLength(1)
     // A console wraps a longer row, and a wrapped row breaks the picture.
-    const wide = rows().filter((row) => [...row].length > 80)
-    expect(wide).toEqual([])
+    expect([...widths][0]).toBeLessThanOrEqual(80)
   })
 
-  test("it carries no emoji and no em dash", () => {
+  test("it carries no emoji, no dash and no sentence", () => {
     const [message] = bannerArguments()
     expect(message).not.toMatch(EMOJI)
     expect(message).not.toContain(EMOJI_SELECTOR)
-    expect(message).not.toContain("—")
-    expect(message).not.toContain("–")
-  })
-
-  test("it prints no sentence", () => {
+    expect(message).not.toContain("\u2014")
+    expect(message).not.toContain("\u2013")
     // The page already explains itself. The console shows the picture only.
     expect(rows().join("")).not.toMatch(/[a-z]{3}/i)
   })
 
-  test("the style sets a line height", () => {
-    // Without it the rows part and the shading breaks up.
-    expect(bannerArguments()[1]).toContain("line-height")
-  })
-
-  test("the style sets both the ink and the paper", () => {
+  test("the style sets a line height, the ink and the paper", () => {
+    const style = bannerArguments()[1]
+    // Without a line height the rows part and the shading breaks up.
+    expect(style).toContain("line-height")
     // A console has its own theme that the page cannot read. Art that takes
     // the console colour arrives as a negative on one theme or the other.
-    const style = bannerArguments()[1]
     expect(style).toContain("background-color:#")
     expect(style).toContain("color:#")
-  })
-
-  test("every row is the same width", () => {
-    // The paper is the background of the text. A short row leaves a notch in
-    // the rectangle.
-    const widths = new Set(rows().map((row) => [...row].length))
-    expect([...widths]).toHaveLength(1)
   })
 
   test("it loads no picture", () => {

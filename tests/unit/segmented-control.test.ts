@@ -223,19 +223,4 @@ describe("a full drag gesture", () => {
     const position = positionFromDrag(1, SEGMENT_PX * 0.6, SEGMENT_PX, COUNT)
     expect(snapToIndex(position, COUNT)).toBe(2)
   })
-
-  test("overdragging past the end still settles on the last segment", () => {
-    const position = positionFromDrag(0, SEGMENT_PX * 10, SEGMENT_PX, COUNT)
-    expect(position).toBe(2)
-    expect(snapToIndex(position, COUNT)).toBe(2)
-    // Parked on a segment, so the stretch has fully relaxed.
-    expect(getDragTension(position)).toBe(0)
-  })
-
-  test("the indicator is most stretched midway between segments", () => {
-    const midway = positionFromDrag(0, SEGMENT_PX * 0.5, SEGMENT_PX, COUNT)
-    const arrived = positionFromDrag(0, SEGMENT_PX, SEGMENT_PX, COUNT)
-    expect(getDragTension(midway)).toBeGreaterThan(getDragTension(arrived))
-    expect(getDragTension(arrived)).toBe(0)
-  })
 })

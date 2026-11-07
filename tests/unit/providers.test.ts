@@ -24,24 +24,14 @@ describe("ChatGPT buildURL", () => {
     expect(parsed.searchParams.get("q")).toBe("hello world")
   })
 
-  test("adds hints param when a feature is selected", () => {
-    const parsed = new URL(p.buildURL("test", "search", false))
-    expect(parsed.searchParams.get("hints")).toBe("search")
+  test("adds hints only when a feature is selected", () => {
+    expect(new URL(p.buildURL("test", "search", false)).searchParams.get("hints")).toBe("search")
+    expect(new URL(p.buildURL("test", "", false)).searchParams.get("hints")).toBeNull()
   })
 
-  test("omits hints when no feature is selected", () => {
-    const parsed = new URL(p.buildURL("test", "", false))
-    expect(parsed.searchParams.get("hints")).toBeNull()
-  })
-
-  test("adds temporary-chat=true when enabled", () => {
-    const parsed = new URL(p.buildURL("test", "", true))
-    expect(parsed.searchParams.get("temporary-chat")).toBe("true")
-  })
-
-  test("omits temporary-chat when disabled", () => {
-    const parsed = new URL(p.buildURL("test", "", false))
-    expect(parsed.searchParams.get("temporary-chat")).toBeNull()
+  test("adds temporary-chat=true only when enabled", () => {
+    expect(new URL(p.buildURL("test", "", true)).searchParams.get("temporary-chat")).toBe("true")
+    expect(new URL(p.buildURL("test", "", false)).searchParams.get("temporary-chat")).toBeNull()
   })
 
   test("correctly round-trips special characters", () => {
@@ -62,11 +52,8 @@ describe("Claude buildURL", () => {
     expect(parsed.searchParams.get("q")).toBe("hello world")
   })
 
-  test("appends the incognito flag for temporary chat", () => {
+  test("appends the incognito flag only for temporary chat", () => {
     expect(p.buildURL("test", "", true)).toContain("incognito")
-  })
-
-  test("omits the incognito flag when disabled", () => {
     expect(p.buildURL("test", "", false)).not.toContain("incognito")
   })
 })
@@ -144,23 +131,13 @@ describe("resolveOpenAction", () => {
 describe("feature options", () => {
   const features = PROVIDERS.flatMap((provider) => provider.features)
 
-  test("every feature has a description for its tooltip", () => {
-    for (const feature of features) {
-      expect(feature.description.length).toBeGreaterThan(0)
-      expect(feature.description.trim()).toBe(feature.description)
-    }
-  })
-
-  test("a description is one sentence and ends with a full stop", () => {
-    for (const feature of features) {
-      expect(feature.description).toMatch(/\.$/)
-    }
-  })
-
-  test("every feature has a label and an icon", () => {
+  test("every feature has a label, an icon, and a one-sentence description", () => {
     for (const feature of features) {
       expect(feature.label.length).toBeGreaterThan(0)
       expect(feature.icon).toBeTruthy()
+      // The tooltip shows the description, so it is trimmed and ends with a full stop.
+      expect(feature.description.trim()).toBe(feature.description)
+      expect(feature.description).toMatch(/^.+\.$/)
     }
   })
 

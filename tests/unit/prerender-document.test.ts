@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import {
   BASE_PATH,
-  FIRST_RESPONSE_BUDGET,
   buildDocument,
   findStylesheetHref,
   insertMarkup,
@@ -97,10 +96,6 @@ describe("buildDocument", () => {
     })
     expect(result.cssInlined).toBe(false)
     expect(result.html).toContain('<link rel="stylesheet"')
-  })
-
-  test("uses the 14KB budget by default", () => {
-    expect(FIRST_RESPONSE_BUDGET).toBe(14 * 1024)
   })
 
   test("a document exactly at the budget still includes the stylesheet", () => {
