@@ -163,7 +163,7 @@ tests/
 │  ├─ utils.test.ts
 │  └─ prerender-document.test.ts
 └─ browser/       # The built site in Chromium
-   ├─ harness.ts             # Static server, browser, and the page helpers
+   ├─ harness.ts             # Static server, browser, and the page helpers (initScript stubs an API before load)
    ├─ measure.ts             # Contrast and target size, read from the pixels
    ├─ accessibility.test.ts
    ├─ interaction.test.ts
@@ -192,8 +192,8 @@ attributes, the layout at each width, the contrast and the drag gesture.
 | File | Covers |
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, and the selected states in forced colors |
-| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing |
+| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, a description that a screen reader hears once, a short name for the temporary chat row, Ctrl+Enter to open, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, the open panel over the whole row, a link line in readable letters, Share on a phone only, and a one-line oversize message |
 
 Rules for a browser test:
 
@@ -282,6 +282,27 @@ Every control that can take the focus gets the `focus-ring` class from `index.cs
 - Do not use `--ring` for a focus indicator. `--ring` is the accent colour, and it disappears on a control that the accent colour fills, such as the primary button or a selected pill.
 - Do not add `outline-none` next to `focus-ring`. Tailwind utilities rank above the components layer, so `outline-none` removes the indicator.
 - Keep the offset. The outline is then next to the page background, not next to the fill of the control.
+
+### Words
+
+The page must work for a person who has never heard "URL" or "prompt", and
+for an expert who makes ten links in a row.
+
+- One word for one meaning: "link", never "URL", in the UI. The provider
+  control is labelled "AI app", because "Provider" reads as an internet or
+  phone company.
+- Keep every sentence at grade 8 or below (Flesch-Kincaid). Pill names stay
+  as ChatGPT names them, so a person finds the same words there.
+- The prompt placeholder is an example, not an instruction. It defines the
+  word better than a definition does.
+- A button label starts with a verb, in sentence case.
+- An icon goes next to a label, never alone, unless the action is universal.
+  The open button has a trailing arrow, because it opens a new tab.
+- Ctrl or Command with Enter in the prompt opens the link. A wide screen with
+  a mouse shows the shortcut in the open button.
+- The prompt has `dir="auto"`, so Arabic and Hebrew run from the right.
+- The link and the counts use the prompt without spaces and new lines at the
+  ends.
 
 ### Font
 
@@ -462,21 +483,30 @@ left, the result on the right.
   A line under the pills tells a touch user about the long press. It shows
   only on a coarse pointer. Do not put information in a tooltip alone.
 - On a phone the pinned dock (`#open-action-section`) holds the result: the
-  link on one line (`#url-preview-toggle`), its copy button, and the open
-  button. The URL field (`#generated-url-section`) shows from 1024px only.
-  The features are then on the first screen. A tap on the link line grows the
-  line into a panel with the full link (`#url-full-panel`), as the Feedback
-  button on emilkowal.ski does. A clip-path reveals the panel upward from the
-  line, so the dock keeps its size. The text in `#url-full` can be selected.
-  Focus moves into the panel and back without a scroll. Escape closes it,
-  and so does a tap outside, because the open panel covers the pills above
-  the dock. The row is
-  `LinkPreview` in `link-preview.tsx`. Both copy
-  buttons use `CopyButton` in `copyable-input.tsx`.
+  link on one line (`#url-preview-toggle`), a Copy button with a text label,
+  and the open button. The URL field (`#generated-url-section`) shows from
+  1024px only. The features are then on the first screen.
+- The link line shows the link decoded: no scheme, spaces for plus signs, and
+  the letters of any script instead of percent codes. Copy and Open use the
+  real link. A link icon marks the line.
+- A phone or a tablet with the system share sheet also gets a Share button.
+  The test is `(pointer: coarse)` and `navigator.share`: the device type,
+  not the screen width. The share sheet needs a secure origin, so a page on
+  plain http gets Copy only.
+- A tap on the link line grows the row into a panel with the full link
+  (`#url-full-panel`), as the Feedback button on emilkowal.ski does. The
+  panel covers the whole row, and its bottom row holds the same buttons. A
+  clip-path reveals it upward, so the dock keeps its size. The row under it is
+  `inert` while it is open. The text in `#url-full` can be selected. Focus
+  moves into the panel and back without a scroll. Escape closes it, and so
+  does a tap outside. The row is `LinkPreview` in `link-preview.tsx`. Every
+  copy button is `CopyButton` in `copyable-input.tsx`.
+- While the link is too long to open, Copy and Share are off. The open button
+  copies the prompt instead.
 - With large text the link line would make the dock too tall. `#app` is a
-  container, and below a column of 16rem the link line leaves the dock and the
-  URL field shows in the page again. Only large text makes the column that
-  narrow in `rem`.
+  container. Below a column of 16rem the link line leaves the dock, the URL
+  field shows in the page again, and the dock is no longer pinned. Only large
+  text makes the column that narrow in `rem`.
 
 ### Forced colors
 
@@ -494,9 +524,12 @@ A feature pill has a tooltip that describes the feature. The text is in
 
 - A tooltip repeats what `aria-describedby` gives a screen reader. Never put
   information in a tooltip alone.
-- The description of each pill is in an `sr-only` span that is always in the
-  page. The tooltip is in the page only while it is open, so a pill must not
-  point `aria-describedby` at it.
+- The description of each pill is in a span with the `hidden` attribute that
+  is always in the page. `aria-describedby` reads hidden text, so a screen
+  reader hears the description once, with the pill. An `sr-only` span was
+  also in the reading order, and a line-by-line reader heard it twice. The
+  tooltip is in the page only while it is open, so a pill must not point
+  `aria-describedby` at it.
 - A tooltip fades in and leaves at once. It has no zoom, no slide and no exit.
   The closed state has `animate-none`. Without it the enter animation starts
   again on close, and Radix keeps the old tooltip in the page beside the new
@@ -594,11 +627,13 @@ Each AI provider has its own URL structure and parameters:
 "Open in {provider}" should do. When the generated URL exceeds 7500
 characters, `resolveOpenAction` returns the provider's bare `baseURL` and
 `shouldCopyPrompt: true`; `App.tsx`'s `handleOpenInProvider` then copies the
-raw prompt to the clipboard and opens that URL instead of the full one. The
-UI reflects this up front: the button label changes to "Copy Prompt & Open
-{provider}", and a persistent (non-hover) message in the counter line explains
-the fallback, so it's visible on touch devices too. The message is one line
-and it is not in the pinned bar, which must stay small. This mirrors the approach used by
+trimmed prompt to the clipboard and opens that URL instead of the full one.
+The UI reflects this up front: the button label changes to "Copy prompt and
+open {provider}", and a persistent (non-hover) message in the counter line,
+"Too long for a link.", says why, so it is visible on touch devices too. The
+message is short so it stays one line on a 320px phone, and it is not in the
+pinned bar, which must stay small. Copy and Share are off while the link is
+too long. This mirrors the approach used by
 `resend/react-email` (PR #3404) and avoids HTTP 431 errors from servers that
 cap request line length.
 
