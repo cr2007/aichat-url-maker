@@ -29,6 +29,9 @@ function LinkPreview({ url, className }: LinkPreviewProps) {
   const toggleRef = useRef<HTMLButtonElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const hasUrl = url !== ""
+  // A cleared prompt also closes the panel. Without this the panel opened by
+  // itself at the next key.
+  if (!hasUrl && expanded) setExpanded(false)
   const open = expanded && hasUrl
 
   /**
@@ -70,6 +73,11 @@ function LinkPreview({ url, className }: LinkPreviewProps) {
           inert={!open}
           onKeyDown={(event) => {
             if (event.key === "Escape") setOpen(false)
+          }}
+          // A tap outside closes the panel, so it does not cover the pills.
+          // The focus stays where the person put it.
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false)
           }}
           className={cn(
             "group absolute inset-x-0 bottom-0 flex flex-col rounded-md border border-border bg-secondary shadow-lg",

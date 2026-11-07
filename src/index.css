@@ -374,10 +374,15 @@
 }
 
 @layer base {
-  /* The open button sticks to the bottom edge. A control that takes the focus
-     must not end under it. This padding keeps the scroll clear of the bar. */
+  /* Below 1024px the dock sticks to the bottom edge. A control that takes
+     the focus must not end under it. This padding keeps the scroll clear of
+     the dock. The wide layout has no pinned bar, so it needs none. */
+  @media (width < 64rem) {
+    html {
+      scroll-padding-bottom: 8rem;
+    }
+  }
   html {
-    scroll-padding-bottom: 8rem;
     /* No font inflation when the phone turns to landscape. */
     -webkit-text-size-adjust: 100%;
     /* No grey flash on a tap. Every control has its own press scale. */

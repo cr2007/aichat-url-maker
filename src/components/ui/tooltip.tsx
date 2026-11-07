@@ -42,6 +42,7 @@ type TouchHandlers = Pick<
   | "onPointerMove"
   | "onPointerUp"
   | "onPointerCancel"
+  | "onPointerLeave"
   | "onBlur"
   | "onClickCapture"
   | "onContextMenu"
@@ -96,6 +97,9 @@ function Tooltip({
   const [open, setOpen] = React.useState(false)
   const isDirectRef = React.useRef(false)
   const heldRef = React.useRef(false)
+  // True from a pen tap until the pen leaves the trigger. A mouse that clicks
+  // a trigger also gets no tooltip until it leaves.
+  const penTappedRef = React.useRef(false)
   const startRef = React.useRef({ x: 0, y: 0 })
   const pressTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const lingerTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -122,6 +126,7 @@ function Tooltip({
         // Step 2.1: remember the input. A finger and a pen tip take the long
         // press. A mouse button does not.
         isDirectRef.current = event.pointerType !== "mouse"
+        penTappedRef.current = event.pointerType === "pen"
         heldRef.current = false
         clearTimers()
         if (!isDirectRef.current) return
@@ -152,7 +157,7 @@ function Tooltip({
         // screen. Silence means the pen has left. The pen can also come back to
         // the same trigger with no leave event, so this rule also opens.
         if (event.pointerType === "pen" && event.buttons === 0 && window.matchMedia(COARSE_POINTER).matches) {
-          setOpen(true)
+          if (!penTappedRef.current) setOpen(true)
           if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current)
           lingerTimerRef.current = setTimeout(() => setOpen(false), PEN_IDLE_MS)
         }
@@ -164,6 +169,9 @@ function Tooltip({
         if (heldRef.current) {
           lingerTimerRef.current = setTimeout(() => setOpen(false), LINGER_MS)
         }
+      },
+      onPointerLeave: () => {
+        penTappedRef.current = false
       },
       onPointerCancel: () => {
         clearTimers()

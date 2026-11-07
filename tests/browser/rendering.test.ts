@@ -439,4 +439,20 @@ describe("the dock on a phone", () => {
     expect(await phone.page.isVisible("#url-full-panel")).toBe(false)
     await phone.close()
   })
+
+  test("a tap outside closes the panel", async () => {
+    // The open panel covers the pills above the dock, and a tap on the page
+    // did not close it.
+    const phone = await openPage({ touch: true, width: 412, height: 740 })
+    await fillPrompt(phone.page)
+    const toggle = phone.page.locator("#url-preview-toggle")
+    const line = (await toggle.boundingBox())!
+    await phone.page.touchscreen.tap(line.x + 40, line.y + line.height / 2)
+    await phone.page.waitForTimeout(400)
+    expect(await toggle.getAttribute("aria-expanded")).toBe("true")
+    await phone.page.touchscreen.tap(200, 40)
+    await phone.page.waitForTimeout(400)
+    expect(await toggle.getAttribute("aria-expanded")).toBe("false")
+    await phone.close()
+  })
 })
