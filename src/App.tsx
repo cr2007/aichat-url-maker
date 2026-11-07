@@ -11,6 +11,7 @@ import { ArrowUpRight, MessageCircleDashed, ChevronDown, Copy, Check } from "luc
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn, copyText, countCharacters, countWords } from "@/lib/utils"
+import { PROMPT_IDEAS, nextIdeaIndex } from "@/lib/prompt-ideas"
 
 /** The classes for a section label. The rem unit follows the browser text size. */
 const SECTION_LABEL_CLASS = "block text-[0.8125rem] font-medium text-muted-foreground"
@@ -236,6 +237,20 @@ function PageContent() {
   // The server has no navigator, so the first render shows "Ctrl".
   const isApple = useSyncExternalStore(subscribeNever, isApplePlatform, () => false)
   const promptRef = useRef<HTMLTextAreaElement>(null)
+  // The prerendered page shows the first idea, so the first client render
+  // does too. The effect below moves on from there.
+  const [ideaIndex, setIdeaIndex] = useState(0)
+
+  // A new example prompt every 5 seconds, only while the field is empty, not
+  // focused, and on a visible tab. A person who types never sees it change.
+  useEffect(() => {
+    if (hasPrompt) return
+    const timer = setInterval(() => {
+      if (document.hidden || document.activeElement === promptRef.current) return
+      setIdeaIndex((current) => nextIdeaIndex(current))
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [hasPrompt])
 
   // The keyboard shrinks the layout on a phone, and the pinned dock moves up
   // over the prompt field. The focus then sits under the dock. A resize
@@ -398,7 +413,7 @@ function PageContent() {
                 }
               }}
               // An example defines "prompt" better than the word does.
-              placeholder="For example: Plan a 3-day trip to Goa"
+              placeholder={`For example: ${PROMPT_IDEAS[ideaIndex]}`}
               // Arabic and Hebrew then run from the right.
               dir="auto"
               aria-labelledby="prompt-label"
