@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: bun i
 
+      - name: Lint
+        run: bun run lint
+
       - name: Run unit tests
         run: bun run test
 
@@ -55,3 +58,18 @@ jobs:
 
       - name: Run browser tests
         run: bun run test:browser
+
+  # Deploy only the commit that passed both test jobs, and only from main.
+  # deploy.yml keeps the manual run.
+  deploy:
+    name: Deploy
+    needs: [unit, browser]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: cr2007/actions/.github/workflows/gh-pages-deploy.yml@v1
+    with:
+      build-command: GITHUB_PAGES=true GITHUB_REPO=${{ github.event.repository.name }} nr build
+      output-dir: dist
