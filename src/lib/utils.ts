@@ -1,6 +1,18 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
+/** The media query for a phone or a tablet: the main pointer is a finger. */
+export const COARSE_POINTER = "(pointer: coarse)"
+
+/**
+ * A subscribe function for `useSyncExternalStore` that never fires. Use it
+ * for a value that does not change while the page is open, such as the
+ * platform or the share support.
+ *
+ * @returns A function that unsubscribes. It does nothing.
+ */
+export const subscribeNever = () => () => {}
+
 /**
  * Joins class names and removes Tailwind conflicts.
  *

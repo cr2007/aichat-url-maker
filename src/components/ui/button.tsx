@@ -1,96 +1,32 @@
 import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
 /**
- * The classes for a button.
- *
- * Hover is one opaque step toward the page text colour: darker in light
- * mode, lighter in dark mode, so the label gains contrast. Do not fade the
- * fill or add a glow. Both lower the contrast or look generated.
- *
- * Every variant has a press state. HIG buttons.md > Best practices: "Always
- * include a press state for a custom button."
- *
- * The focus indicator is `--focus-ring` with an offset, not `--ring`.
- * `--ring` is the accent colour, so it disappears on a filled button.
+ * The classes for the one button style: the filled primary. Hover is one
+ * opaque step toward the page text colour, so the label gains contrast. A
+ * press scales to 0.97 (HIG: always include a press state).
  */
-const buttonVariants = cva(
-  [
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
-    // `scale` is named because Tailwind v4 compiles `scale-*` to the
-    // independent `scale` property, which `transform` does not cover. The
-    // hover shadow is not named: it changes at once.
-    "transition-[background-color,opacity,scale] duration-150",
-    "active:scale-[0.97] active:shadow-none motion-reduce:active:scale-100",
-    "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
-    "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
-    "focus-ring",
-    "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-  ],
-  {
-    variants: {
-      variant: {
-        default:
-          "bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary),var(--foreground)_14%)]",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 hover:shadow-[0_4px_12px_-4px] hover:shadow-destructive/50 dark:bg-destructive/60",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
+const BUTTON_CLASS = [
+  "inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 has-[>svg]:px-3 text-sm font-medium",
+  "bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary),var(--foreground)_14%)]",
+  // Tailwind v4 compiles `scale-*` to the `scale` property, so it is named.
+  "transition-[background-color,opacity,scale] duration-150",
+  "active:scale-[0.97] motion-reduce:active:scale-100",
+  "disabled:pointer-events-none disabled:opacity-50",
+  "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
+  "focus-ring",
+].join(" ")
 
 /**
- * A styled button. It renders as a `<Slot>` instead of `<button>` when
- * `asChild` is set.
+ * A button in the one app style. Extra classes merge over the base.
  *
- * @param props.variant - The look of the button.
- * @param props.size - The size of the button.
- * @param props.asChild - True to put the style on the child element.
+ * @param props.className - Classes that override the base.
  * @returns The button.
  */
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot : "button"
-
-  return (
-    <Comp
-      data-slot="button"
-      data-variant={variant}
-      data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
+function Button({ className, ...props }: React.ComponentProps<"button">) {
+  // data-slot: the forced-colors rule in index.css draws a border from it.
+  return <button data-slot="button" className={cn(BUTTON_CLASS, className)} {...props} />
 }
 
 export { Button }

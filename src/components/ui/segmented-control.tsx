@@ -67,7 +67,7 @@ const SEGMENT_CLASS = cn(
 )
 
 /** One choice in a {@link SegmentedControl}. */
-export interface SegmentedControlOption<T extends string> {
+interface SegmentedControlOption<T extends string> {
   /** The value that `onValueChange` receives for this segment. */
   value: T
   /** The visible text. This text is also the accessible name. */
@@ -313,7 +313,7 @@ function SegmentedControl<T extends string>({
       role="radiogroup"
       aria-label={label}
       value={value}
-      // Step 1.1: Radix sends "" when a person clicks the selected item
+      // Radix sends "" when a person clicks the selected item
       // again. This control always keeps one selection. Ignore that value.
       onValueChange={(next) => next && onValueChange(next as T)}
       onPointerDown={handlePointerDown}

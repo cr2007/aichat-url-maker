@@ -19,7 +19,6 @@
   }
 }
 
-/* The tick enters from scale 0.9 with opacity. It does not overshoot. */
 /* Instrument Sans, self-hosted. One variable file for each subset holds
    the weights 400 to 700. SIL Open Font License. */
 @font-face {
@@ -39,38 +38,30 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* The tick enters from scale 0.9 with opacity. It does not overshoot. */
 @keyframes check-pop {
   from { transform: scale(0.9); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
 }
 
-/* The link text settles into its new lines as the box opens. The blur hides
-   the jump of the reflow, so the open reads as one shape that morphs, not as
-   a cut-off line that slides into view. */
 /* A new example prompt comes out of a light blur, so the swap reads as one
    line that changes, not as a jump. */
 @keyframes idea-in {
   from { opacity: 0; filter: blur(2px); }
 }
 
+/* The link text settles into its new lines as the box opens. The blur hides
+   the jump of the reflow, so the open reads as one shape that changes. */
 @keyframes link-settle {
   from { opacity: 0.4; filter: blur(2px); }
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -83,11 +74,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-focus-ring: var(--focus-ring);
   --color-warning: var(--warning);
   --color-segment-track: var(--segment-track);
-  --color-segment-thumb: var(--segment-thumb);
-  --color-segment-thumb-glass: var(--segment-thumb-glass);
 }
 
 /* One strong ease-out for every element that enters or responds. The built-in
@@ -109,10 +97,6 @@
   --bg-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, oklch(0.88 0.06 264 / 0.45) 0%, transparent 100%);
   --background: oklch(0.995 0.005 264);
   --foreground: oklch(0.145 0.005 264);
-  --card: oklch(0.995 0.005 264);
-  --card-foreground: oklch(0.145 0.005 264);
-  --popover: oklch(0.995 0.005 264);
-  --popover-foreground: oklch(0.145 0.005 264);
   --primary: oklch(0.53 0.18 264);
   --primary-foreground: oklch(0.99 0.005 264);
   --secondary: oklch(0.97 0.005 264);
@@ -142,16 +126,10 @@
   --segment-thumb: oklch(0.995 0.005 264);
   --segment-thumb-shadow: oklch(0.145 0.005 264 / 0.08);
   --segment-thumb-drop: oklch(0.145 0.005 264 / 0.32);
-  /* Liquid Glass. These values apply to the indicator during a press only.
-     HIG materials.md > Liquid Glass keeps glass out of the content layer.
-     There is one exception: "controls in the content layer with a transient
-     interactive element like sliders and toggles". Use the regular variant.
-     The clear variant is for components above photos and videos.
-
-     The primary color tints the glass during a drag only. HIG color.md says
-     to put color on the background, not on the text, and to keep a tinted
-     background on one control. The "Open in" button is that control at rest,
-     so this tint must not stay after the drag. */
+  /* Liquid Glass on the indicator during a press only (HIG materials.md: a
+     transient control is the one exception in the content layer). The tint
+     shows during a drag only, because the open button is the one tinted
+     control at rest. */
   --segment-thumb-glass: oklch(0.62 0.15 264 / 0.6);
   --segment-thumb-specular: oklch(1 0 0 / 0.95);
   --segment-thumb-underglow: oklch(0.53 0.18 264 / 0.4);
@@ -169,10 +147,6 @@
       --background: oklch(0.145 0.005 264);
       --bg-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, oklch(0.22 0.07 264 / 0.5) 0%, transparent 100%);
       --foreground: oklch(0.985 0.005 264);
-      --card: oklch(0.205 0.005 264);
-      --card-foreground: oklch(0.985 0.005 264);
-      --popover: oklch(0.205 0.005 264);
-      --popover-foreground: oklch(0.985 0.005 264);
       --primary: oklch(0.67 0.15 264);
       --primary-foreground: oklch(0.10 0.005 264);
       --secondary: oklch(0.269 0.005 264);
@@ -386,6 +360,10 @@
     -webkit-text-size-adjust: 100%;
     /* No grey flash on a tap. Every control has its own press scale. */
     -webkit-tap-highlight-color: transparent;
+    scrollbar-color: var(--input) transparent;
+    /* No element can make the page scroll sideways. clip, not hidden, keeps
+       the sticky dock working. */
+    overflow-x: clip;
   }
   /* The page is a tool, not a document. A long press on a label, a count or
      a control must not select text and open the cut and copy bar. The two
@@ -410,18 +388,9 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /* No element can make the page scroll sideways. clip, not hidden, keeps
-     the sticky dock working. */
-  html,
-  body {
-    overflow-x: clip;
-  }
   /* The parts the browser draws take the palette too. */
   ::selection {
     background-color: color-mix(in oklab, var(--primary) 28%, transparent);
-  }
-  html {
-    scrollbar-color: var(--input) transparent;
   }
   textarea {
     caret-color: var(--primary);
@@ -431,6 +400,7 @@
     font-family: var(--font-sans);
     background-image: var(--bg-gradient);
     background-attachment: fixed;
+    overflow-x: clip;
   }
 
   /* Reduced motion: remove the animations and the transitions. See

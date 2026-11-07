@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { COARSE_POINTER, cn } from "@/lib/utils"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 
 /**
@@ -20,8 +20,6 @@ const LINGER_MS = 1500
  */
 const PEN_IDLE_MS = 300
 
-/** The media query for a phone or a tablet: the main pointer is a finger. */
-const COARSE_POINTER = "(pointer: coarse)"
 
 /**
  * Subscribes to a change of the main pointer.

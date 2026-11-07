@@ -1,16 +1,15 @@
 import { Fragment, memo, useState, useCallback, useDeferredValue, useEffect, useRef, useSyncExternalStore } from "react"
-import type { ReactNode } from "react"
+import type { ReactNode, RefObject } from "react"
 import { CopyableInput } from "@/components/copyable-input"
 import { LinkPreview } from "@/components/link-preview"
 import { Button } from "@/components/ui/button"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Toggle } from "@/components/ui/toggle"
+import { Toggle, ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle"
 import { SegmentedControl } from "@/components/ui/segmented-control"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowUpRight, MessageCircleDashed, ChevronDown, Copy, Check } from "lucide-react"
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
-import type { ProviderId, Feature } from "@/lib/providers"
-import { cn, copyText, countCharacters, countWords } from "@/lib/utils"
+import type { ProviderId, Feature, FeatureOption } from "@/lib/providers"
+import { cn, copyText, countCharacters, countWords, subscribeNever } from "@/lib/utils"
 import { PROMPT_IDEAS, dealIdeas } from "@/lib/prompt-ideas"
 
 /** The classes for a section label. The rem unit follows the browser text size. */
@@ -33,18 +32,9 @@ const PROVIDER_OPTIONS = PROVIDERS.map((provider) => ({
 const FEATURE_ROW_CLASS = "flex w-full flex-wrap justify-center gap-1.5 bg-transparent p-0 lg:justify-start"
 
 /**
- * The classes for the temporary chat row.
- *
- * The whole row is the control, so a press anywhere in it toggles the
- * setting. HIG toggles.md: outside a list, use a button that behaves like a
- * toggle, not a switch.
- *
- * This row reads `data-state`, which Radix sets. The feature pills cannot,
- * because a tooltip wraps each one and writes its own `data-state` over the
- * toggle's. They read `aria-pressed` instead.
- *
- * The transition names `scale`, so the press scale from `toggleVariants`
- * eases. The hover shadow is not in the list. It changes at once.
+ * The classes for the temporary chat row. The whole row is one toggle (HIG:
+ * a button that toggles, not a switch). It reads `data-state`, because no
+ * tooltip wraps it. The transition names `scale` for the press.
  */
 const TEMPORARY_CHAT_CLASS =
   "flex h-auto w-full items-center gap-3 rounded-md border border-border bg-secondary px-3 py-2.5 text-left whitespace-normal " +
@@ -52,20 +42,9 @@ const TEMPORARY_CHAT_CLASS =
   "data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:text-foreground dark:data-[state=on]:bg-primary/10"
 
 /**
- * The classes for a feature pill.
- *
- * The selected state reads `aria-pressed`, not `data-state`. A tooltip wraps
- * each pill, and `TooltipTrigger asChild` writes its own `data-state` over
- * the toggle's, which silently removed the selected fill.
- *
- * `whitespace-normal h-auto` replaces the fixed height and the nowrap rule
- * from `toggleVariants`, so a long label wraps inside its cell instead of
- * widening it.
- *
- * `min-h-11` is the 44px target that HIG asks for. The transition names the
- * properties a pill actually changes: `transition-all` would also animate the
- * height and the padding when a label wraps. It names `scale`, so the press
- * scale eases. The hover shadow is not in the list. It changes at once.
+ * The classes for a feature pill. It reads `aria-pressed`, because the tooltip
+ * trigger writes over `data-state`. `h-auto whitespace-normal` lets a long
+ * label wrap, and `min-h-11` is the 44px target.
  */
 const PILL_CLASS =
   "flex items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 max-w-full whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary transition-[background-color,color,border-color,scale] duration-150 text-sm font-medium"
@@ -126,9 +105,6 @@ const PromptMeta = memo(function PromptMeta({ text, tooLong }: { text: string; t
   )
 })
 
-/** No subscription: the platform of a device does not change. */
-const subscribeNever = () => () => {}
-
 /**
  * True on an Apple device, where the shortcut key is Command, not Control.
  *
@@ -137,6 +113,108 @@ const subscribeNever = () => () => {}
 function isApplePlatform() {
   return /Mac|iPhone|iPad/.test(navigator.platform)
 }
+
+/**
+ * Rotates the example prompt while the field is empty, not focused, and on a
+ * visible tab. The first idea is random too, and fades in after hydration.
+ *
+ * @param active - False while the field holds text.
+ * @param promptRef - The prompt field. A focused field keeps its idea.
+ * @returns The index of the idea, and true while the old idea fades out.
+ */
+function useRotatingIdea(active: boolean, promptRef: RefObject<HTMLTextAreaElement | null>) {
+  // The prerendered page shows the first idea, so the first client render does too.
+  const [ideaIndex, setIdeaIndex] = useState(0)
+  const [ideaLeaving, setIdeaLeaving] = useState(false)
+  const deck = useRef<number[]>([])
+
+  useEffect(() => {
+    if (!active) return
+    // Step 1.1: the next idea comes from a shuffled deck, so none repeats soon.
+    const show = () =>
+      setIdeaIndex((current) => {
+        if (deck.current.length === 0) deck.current = dealIdeas(current)
+        return deck.current.pop()!
+      })
+    // Step 1.2: the first random idea.
+    const first = setTimeout(show, 0)
+    // Step 1.3: the old idea fades out, then the new one fades in.
+    let swap: ReturnType<typeof setTimeout> | undefined
+    const timer = setInterval(() => {
+      if (document.hidden || document.activeElement === promptRef.current) return
+      setIdeaLeaving(true)
+      swap = setTimeout(() => {
+        show()
+        setIdeaLeaving(false)
+      }, IDEA_FADE_OUT_MS)
+    }, IDEA_INTERVAL_MS)
+    return () => {
+      clearTimeout(first)
+      clearTimeout(swap)
+      clearInterval(timer)
+      setIdeaLeaving(false)
+    }
+  }, [active, promptRef])
+
+  return { ideaIndex, ideaLeaving }
+}
+
+/**
+ * The feature pills: toggle buttons, one at a time, and a second press clears
+ * the choice. Radix marks a single-group item `role="radio"`, but a radio
+ * cannot be unchecked, so each pill is a button with `aria-pressed`.
+ *
+ * @param props.features - The pills to show.
+ * @param props.value - The selected feature, or "".
+ * @param props.onChange - Gets the new feature, or "" on a second press.
+ * @returns The pill row.
+ */
+const FeaturePills = memo(function FeaturePills({
+  features,
+  value,
+  onChange,
+}: {
+  features: FeatureOption[]
+  value: Feature
+  onChange: (value: Feature) => void
+}) {
+  return (
+    <ToggleGroup
+      id="feature-picker"
+      type="single"
+      value={value}
+      onValueChange={(next) => onChange(next as Feature)}
+      aria-labelledby="feature-label"
+      className={FEATURE_ROW_CLASS}
+    >
+      {features.map((option) => (
+        <Fragment key={option.value}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ToggleGroupItem
+                value={option.value}
+                className={PILL_CLASS}
+                role="button"
+                aria-pressed={value === option.value}
+                aria-checked={undefined}
+                aria-describedby={`feature-${option.value}-description`}
+              >
+                {option.icon}
+                {option.label}
+              </ToggleGroupItem>
+            </TooltipTrigger>
+            <TooltipContent>{option.description}</TooltipContent>
+          </Tooltip>
+          {/* The tooltip is in the page only while open, so the description
+              lives here, hidden, and a screen reader reads it once. */}
+          <span id={`feature-${option.value}-description`} hidden>
+            {option.description}
+          </span>
+        </Fragment>
+      ))}
+    </ToggleGroup>
+  )
+})
 
 /** The keycap look. Pressed, it sinks 1px into a thinner bottom edge. */
 const KEYCAP_CLASS =
@@ -274,7 +352,7 @@ function PageContent() {
   // segmented control changes the provider on focus alone, so an arrow key
   // would be enough to lose it.
   const feature = provider.supportsFeatures ? selectedFeature : ""
-  const isTemporary = provider.supportsTemporaryChat ? temporaryChat : false
+  const isTemporary = provider.supportsTemporaryChat && temporaryChat
 
   // Spaces and new lines at the ends are not part of the prompt. They would
   // only make the link longer and the count wrong.
@@ -292,41 +370,7 @@ function PageContent() {
   // The server has no navigator, so the first render shows "Ctrl".
   const isApple = useSyncExternalStore(subscribeNever, isApplePlatform, () => false)
   const promptRef = useRef<HTMLTextAreaElement>(null)
-  // The prerendered page shows the first idea, so the first client render
-  // does too. The effect below moves on from there.
-  const [ideaIndex, setIdeaIndex] = useState(0)
-  const [ideaLeaving, setIdeaLeaving] = useState(false)
-  const ideaDeck = useRef<number[]>([])
-
-  // A new example prompt every 3.5 seconds, only while the field is empty, not
-  // focused, and on a visible tab. A person who types never sees it change.
-  useEffect(() => {
-    if (hasPrompt) return
-    // Step 1.1: the next idea comes from a shuffled deck, so none repeats soon.
-    const show = () =>
-      setIdeaIndex((current) => {
-        if (ideaDeck.current.length === 0) ideaDeck.current = dealIdeas(current)
-        return ideaDeck.current.pop()!
-      })
-    // Step 1.2: the first idea is random too. It fades in after hydration.
-    const first = setTimeout(show, 0)
-    // Step 1.3: the old idea fades out, then the new one fades in.
-    let swap: ReturnType<typeof setTimeout> | undefined
-    const timer = setInterval(() => {
-      if (document.hidden || document.activeElement === promptRef.current) return
-      setIdeaLeaving(true)
-      swap = setTimeout(() => {
-        show()
-        setIdeaLeaving(false)
-      }, IDEA_FADE_OUT_MS)
-    }, IDEA_INTERVAL_MS)
-    return () => {
-      clearTimeout(first)
-      clearTimeout(swap)
-      clearInterval(timer)
-      setIdeaLeaving(false)
-    }
-  }, [hasPrompt])
+  const { ideaIndex, ideaLeaving } = useRotatingIdea(!hasPrompt, promptRef)
 
   // The keyboard shrinks the layout on a phone, and the pinned dock moves up
   // over the prompt field. The focus then sits under the dock. A resize
@@ -339,15 +383,15 @@ function PageContent() {
     window.addEventListener("resize", keepPromptInView)
     return () => window.removeEventListener("resize", keepPromptInView)
   }, [])
-  const popupBlocked = blockedURL !== null && blockedURL === url
-  const copyFailed = copyFailedURL !== null && copyFailedURL === url
+  const popupBlocked = blockedURL === url
+  const copyFailed = copyFailedURL === url
 
   /**
    * Opens the generated URL in a new tab.
    *
    * If the URL is too long, the function copies the prompt to the clipboard
-   * and opens the home page of the provider. A person can then paste the
-   * prompt into the page.
+   * and opens the same link without the prompt, so every setting still
+   * applies. A person can then paste the prompt into the page.
    *
    * The function records a blocked popup and a failed copy in the state. Each
    * message then goes away when the inputs change.
@@ -379,19 +423,6 @@ function PageContent() {
   }, [url, trimmedPrompt])
 
   /**
-   * Selects a feature, or clears it.
-   *
-   * The pills are toggle buttons, so a press on the selected pill clears the
-   * choice. Radix reports "" for that press.
-   *
-   * @param value - The feature, or "" to clear it.
-   */
-  const handleFeatureChange = useCallback((value: string) => {
-    // Step 1.1: "" means the person pressed the selected pill again.
-    setSelectedFeature(value as Feature)
-  }, [])
-
-  /**
    * Opens or closes the steps under "How it works".
    *
    * The steps open at the end of the page, below the screen, so a person
@@ -412,23 +443,6 @@ function PageContent() {
     }, 200)
   }, [infoOpen])
 
-  /**
-   * Changes the provider.
-   *
-   * It changes the provider and nothing else. The feature and the temporary
-   * chat settings stay in state, and the URL ignores the ones that the new
-   * provider does not support.
-   *
-   * @param value - The provider id from the segmented control.
-   */
-  const handleProviderChange = useCallback((value: string) => {
-    // Step 1.1: ignore an empty value.
-    if (!value) return
-
-    // Step 1.2: set the new provider.
-    setSelectedProvider(value as ProviderId)
-  }, [])
-
   return (
     <main id="app" className="@container min-h-dvh px-4 py-8">
       {/* One column on a phone. Two columns from 1024px: the inputs on the
@@ -439,7 +453,6 @@ function PageContent() {
         id="app-column"
         className="mx-auto flex max-w-xl flex-col gap-5 lg:grid lg:max-w-5xl lg:grid-cols-2 lg:items-start lg:gap-x-12"
       >
-        {/* Header */}
         {/* Left aligned from 1024px, like the two columns below it. */}
         <header id="app-header" className="text-center pt-2 lg:col-span-2 lg:text-left">
           <h1 id="app-title" className="text-2xl font-semibold tracking-tight pb-0.5">
@@ -451,7 +464,6 @@ function PageContent() {
         </header>
 
         <div id="inputs-column" className="contents lg:flex lg:flex-col lg:gap-5">
-          {/* Provider selector */}
           <div id="provider-section" className="space-y-2">
             {/* "Provider" reads as an internet or phone company to many people. */}
             {/* Hidden from the reading order: the group already has this name.
@@ -461,12 +473,11 @@ function PageContent() {
               label="AI app"
               options={PROVIDER_OPTIONS}
               value={selectedProvider}
-              onValueChange={handleProviderChange}
+              onValueChange={setSelectedProvider}
               id="provider-picker"
             />
           </div>
 
-          {/* Prompt */}
           <div id="prompt-section" className="space-y-1.5">
             {/* The label still focuses the field on a click. A screen reader
                 gets the name from aria-labelledby, so it is one stop. */}
@@ -481,7 +492,7 @@ function PageContent() {
             {/* The overlay draws the example, so a new one can fade in. The
                 real placeholder stays for screen readers, in a clear colour. */}
             <div className="relative">
-            <textarea
+              <textarea
               ref={promptRef}
               id="prompt-input"
               value={prompt}
@@ -503,23 +514,23 @@ function PageContent() {
               className="block w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-transparent border border-input focus-ring focus:border-primary resize-y"
               rows={4}
             />
-            {prompt === "" && (
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-px px-3 py-2.5 text-sm pointer-coarse:text-base text-muted-foreground"
-              >
-                For example:{" "}
-                {/* Only the idea changes, so only the idea fades: out fast,
-                    then in with an even curve, so the swap is easy to see. */}
+              {prompt === "" && (
                 <span
-                  key={ideaIndex}
-                  data-leaving={ideaLeaving}
-                  className="animate-[idea-in_280ms_ease-in-out] transition-[opacity,filter] duration-120 ease-in data-[leaving=true]:opacity-0 data-[leaving=true]:blur-[2px]"
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-px px-3 py-2.5 text-sm pointer-coarse:text-base text-muted-foreground"
                 >
-                  {PROMPT_IDEAS[ideaIndex]}
+                  For example:{" "}
+                  {/* Only the idea changes, so only the idea fades: out fast,
+                      then in with an even curve, so the swap is easy to see. */}
+                  <span
+                    key={ideaIndex}
+                    data-leaving={ideaLeaving}
+                    className="animate-[idea-in_280ms_ease-in-out] transition-[opacity,filter] duration-120 ease-in data-[leaving=true]:opacity-0 data-[leaving=true]:blur-[2px]"
+                  >
+                    {PROMPT_IDEAS[ideaIndex]}
+                  </span>
                 </span>
-              </span>
-            )}
+              )}
             </div>
             <PromptMeta text={deferredPrompt} tooLong={deferredTooLong} />
             {/* One announcement, when the prompt goes over the limit. No role,
@@ -533,49 +544,11 @@ function PageContent() {
           <Collapse id="feature-collapse" open={provider.supportsFeatures}>
             <div id="feature-section" className="space-y-2">
               <span id="feature-label" aria-hidden="true" className={SECTION_LABEL_CLASS}>Features (optional)</span>
-              {/* Radix marks each item role="radio" for a single group, but a
-                  radio cannot be unchecked. These are toggle buttons: one at a
-                  time, and a second press clears the choice. aria-pressed says
-                  so, and aria-checked is cleared. */}
-              <ToggleGroup
-                id="feature-picker"
-                type="single"
+              <FeaturePills
+                features={featureProvider.features}
                 value={selectedFeature}
-                onValueChange={handleFeatureChange}
-                aria-labelledby="feature-label"
-                className={FEATURE_ROW_CLASS}
-              >
-                {featureProvider.features.map((option) => {
-                  const selected = selectedFeature === option.value
-                  return (
-                    <Fragment key={option.value}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <ToggleGroupItem
-                            value={option.value}
-                            className={PILL_CLASS}
-                            role="button"
-                            aria-pressed={selected}
-                            aria-checked={undefined}
-                            aria-describedby={`feature-${option.value}-description`}
-                          >
-                            {option.icon}
-                            {option.label}
-                          </ToggleGroupItem>
-                        </TooltipTrigger>
-                        <TooltipContent>{option.description}</TooltipContent>
-                      </Tooltip>
-                      {/* The tooltip is in the page only while it is open, so
-                          the description lives here. It is hidden from the
-                          reading order, so a screen reader reads it once:
-                          as the description of the pill. */}
-                      <span id={`feature-${option.value}-description`} hidden>
-                        {option.description}
-                      </span>
-                    </Fragment>
-                  )
-                })}
-              </ToggleGroup>
+                onChange={setSelectedFeature}
+              />
               {/* Only a finger needs this line. A mouse and a pen show the
                   tooltip on hover. */}
               <p
@@ -624,9 +597,6 @@ function PageContent() {
                 data-on={temporaryChat}
                 className={cn(
                   "size-5 shrink-0 scale-90 opacity-0",
-                  // `scale` and not `transform`: Tailwind v4 compiles `scale-*`
-                  // to the independent `scale` property, which a transform
-                  // transition does not cover.
                   "transition-[opacity,scale] duration-200 ease-out",
                   "data-[on=true]:scale-100 data-[on=true]:opacity-100"
                 )}
@@ -660,14 +630,9 @@ function PageContent() {
             />
           </div>
 
-          {/* The dock. On a phone it sticks to the bottom edge of the screen,
-              so a short screen, such as a phone in landscape, does not hide
-              it below the fold. It holds the link on one line, its copy
-              button and the open button, so the features above it are on
-              the first screen. The solid fill hides the content
-              that scrolls under it, and the gradient above it softens that
-              edge. From 1024px the result column is sticky, so the button
-              stays in the page. */}
+          {/* The dock. On a phone it sticks to the bottom edge and holds the
+              link, Copy and the open button, so the features stay on the first
+              screen. From 1024px the result column is sticky instead. */}
           <div
             id="open-action-section"
             // With large text the column is under 16rem, and a pinned dock would
@@ -711,7 +676,6 @@ function PageContent() {
           </div>
         </div>
 
-        {/* How it works */}
         <div id="how-it-works-section" className="border-t border-border pt-3 pb-1 lg:col-span-2">
           <button
             id="how-it-works-toggle"
@@ -733,7 +697,7 @@ function PageContent() {
               moves as one change. The list is a sequence, so it is numbered. */}
           <Collapse id="how-it-works-panel" open={infoOpen} className="mt-0">
             <ol className="mx-auto w-fit max-w-xl list-inside list-decimal space-y-1.5 pt-3 text-[0.8125rem] text-muted-foreground">
-              <li>Choose a provider.</li>
+              <li>Choose an AI app.</li>
               <li>Type your prompt.</li>
               <li>Pick a feature, if you want one.</li>
               <li>Copy or share the link, or open it in {provider.name}.</li>

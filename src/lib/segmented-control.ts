@@ -25,7 +25,7 @@ export const TRACK_PADDING_REM = 0.5
 export const MAX_DRAG_STRETCH = 0.06
 
 /** The inline styles that position the indicator. */
-export type IndicatorGeometry = {
+type IndicatorGeometry = {
   /** The CSS width of one segment. */
   width: string
   /** The CSS transform that moves and stretches the indicator. */

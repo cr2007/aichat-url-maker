@@ -1,7 +1,7 @@
 import { memo, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { ChevronDown, Link, Share } from "lucide-react"
 import { CopyButton } from "@/components/copyable-input"
-import { cn } from "@/lib/utils"
+import { COARSE_POINTER, cn, subscribeNever } from "@/lib/utils"
 
 interface LinkPreviewProps {
   /** The generated URL. Empty when there is no prompt. */
@@ -18,8 +18,6 @@ const SCHEME = /^https:\/\//
 /** A plus sign, which URLSearchParams writes for a space. */
 const PLUS = /\+/g
 
-/** No subscription: the share support of a browser does not change. */
-const subscribeNever = () => () => {}
 
 /**
  * True on a phone or a tablet with the system share sheet. The query reads
@@ -29,7 +27,7 @@ const subscribeNever = () => () => {}
  * @returns True if the browser can open the share sheet.
  */
 function canShare() {
-  return typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches
+  return typeof navigator.share === "function" && window.matchMedia(COARSE_POINTER).matches
 }
 
 /**

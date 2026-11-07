@@ -36,7 +36,7 @@ const ROOT_PATTERN = /<div id="root">\s*<\/div>/
 const STYLESHEET_PATTERN = /<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/
 
 /** What {@link buildDocument} produced. */
-export interface BuiltDocument {
+interface BuiltDocument {
   /** The document to write. */
   html: string
   /** Whether the stylesheet went into the document. */
