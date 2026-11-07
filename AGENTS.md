@@ -108,8 +108,8 @@ src/
 ├─ App.tsx                     # Main UI, form state, and URL generation wiring
 ├─ main.tsx                    # React entry point. Hydrates the prerendered markup
 ├─ sw.ts                       # Workbox service worker (vite-plugin-pwa, injectManifest)
-├─ dev/font-lab.tsx            # TEMPORARY. Font compare screen at /?fonts on the dev server. Delete it after the font choice
-├─ index.css                   # Tailwind setup, design tokens, appearance, reduced motion
+├─ index.css                   # Tailwind setup, design tokens, the font, appearance, reduced motion
+├─ assets/fonts/               # Instrument Sans, self-hosted: latin and latin-ext woff2
 ├─ components/
 │  ├─ copyable-input.tsx       # CopyButton, and the read-only URL field that uses it
 │  ├─ link-preview.tsx         # The link line in the phone dock, which grows into a panel
@@ -193,7 +193,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, and the selected states in forced colors |
 | `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing |
 
 Rules for a browser test:
 
@@ -282,6 +282,15 @@ Every control that can take the focus gets the `focus-ring` class from `index.cs
 - Do not use `--ring` for a focus indicator. `--ring` is the accent colour, and it disappears on a control that the accent colour fills, such as the primary button or a selected pill.
 - Do not add `outline-none` next to `focus-ring`. Tailwind utilities rank above the components layer, so `outline-none` removes the indicator.
 - Keep the offset. The outline is then next to the page background, not next to the fill of the control.
+
+### Font
+
+The font is Instrument Sans, self-hosted in `src/assets/fonts/`. There is no
+request to another origin. One variable woff2 file per subset holds the
+weights 400 to 700. `index.css` declares it with `font-display: swap`, and
+`index.html` preloads the latin file, so the text does not swap after the
+first paint. The service worker precaches the woff2 files for offline use.
+The `<noscript>` page names the same family.
 
 ### Appearance
 
@@ -423,6 +432,9 @@ left, the result on the right.
 - A control that a provider does not support folds away with `Collapse` in
   `App.tsx`, over 200ms. The content stays mounted and has `inert`. The row
   keeps the text of the last provider while it folds.
+- The "How it works" steps use the same fold. They open at the end of the
+  page, below the screen, so after the fold the page scrolls just enough to
+  show them. With reduced motion the scroll is a jump, not a glide.
 - A control that can take text size must reflow. The provider control reads its
   own width in `rem`, so it stacks when the text grows. A label breaks inside a
   word before it overflows.
@@ -456,7 +468,9 @@ left, the result on the right.
   line into a panel with the full link (`#url-full-panel`), as the Feedback
   button on emilkowal.ski does. A clip-path reveals the panel upward from the
   line, so the dock keeps its size. The text in `#url-full` can be selected.
-  Focus moves into the panel and back, and Escape closes it. The row is
+  Focus moves into the panel and back without a scroll. Escape closes it,
+  and so does a tap outside, because the open panel covers the pills above
+  the dock. The row is
   `LinkPreview` in `link-preview.tsx`. Both copy
   buttons use `CopyButton` in `copyable-input.tsx`.
 - With large text the link line would make the dock too tall. `#app` is a
@@ -497,7 +511,8 @@ A feature pill has a tooltip that describes the feature. The text is in
 - A pen on a touch device: Chromium on Android drops the hover exit of a pen
   (crbug.com/715114), so the page gets no leave event. A hovering pen sends a
   move about every 16ms, even when held still. `Tooltip` opens on a pen hover
-  move and closes after 300ms with no move. Brave on Android (Chromium 156)
+  move and closes after 300ms with no move. After a pen tap the hover does
+  not reopen it until the pen leaves the trigger, as with a mouse click. Brave on Android (Chromium 156)
   sends no pen hover at all. Chrome 158 does. Verified over adb on a real
   Android phone.
 - Hover with a mouse or a pen: Radix opens the tooltip. A hover is a move with
