@@ -295,7 +295,10 @@ function PageContent() {
     }
 
     // Step 1.4: open the tab. Record the URL if the browser blocks the tab.
+    // "noopener" would make window.open return null and hide a blocked
+    // popup, so the handle back to this tab is cut after the open instead.
     const opened = window.open(targetURL, "_blank")
+    if (opened) opened.opener = null
     setBlockedURL(opened ? null : url)
   }, [url, trimmedPrompt])
 

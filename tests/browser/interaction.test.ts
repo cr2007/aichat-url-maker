@@ -239,6 +239,30 @@ describe("the open button without a clipboard", () => {
   })
 })
 
+describe("the opened tab", () => {
+  test("it has no handle back to this tab, and a blocked popup still shows its message", async () => {
+    // window.open gave the AI app window.opener, a handle that can send this
+    // tab to another address. "noopener" would hide a blocked popup, because
+    // window.open then returns null, so the handle is cut after the open.
+    const opened = await openPage()
+    await opened.context.route("https://chatgpt.com/**", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<title>stub</title>" })
+    )
+    await fillPrompt(opened.page)
+    const [popup] = await Promise.all([opened.context.waitForEvent("page"), opened.page.click("#open-in-provider")])
+    await popup.waitForLoadState()
+    expect(await popup.evaluate(() => window.opener)).toBeNull()
+    await popup.close()
+
+    await opened.page.evaluate(() => {
+      window.open = () => null
+    })
+    await opened.page.click("#open-in-provider")
+    expect(await opened.page.isVisible("#popup-blocked-notice")).toBe(true)
+    await opened.close()
+  })
+})
+
 describe("the whole page", () => {
   test("it reports no errors during a full pass", async () => {
     const opened = await openPage()
