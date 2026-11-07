@@ -1,4 +1,4 @@
-import { Fragment, useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react"
+import { Fragment, memo, useState, useCallback, useDeferredValue, useEffect, useRef, useSyncExternalStore } from "react"
 import type { ReactNode } from "react"
 import { CopyableInput } from "@/components/copyable-input"
 import { LinkPreview } from "@/components/link-preview"
@@ -68,6 +68,56 @@ const TEMPORARY_CHAT_CLASS =
  */
 const PILL_CLASS =
   "flex items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 max-w-full whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary transition-[background-color,color,border-color,scale] duration-150 text-sm font-medium"
+
+/** The reason in the counter line when the link is too long. One short line, so the page does not move. */
+const OVERSIZE_MESSAGE = "Too long for a link."
+
+/**
+ * The counter line under the prompt.
+ *
+ * Counting a long prompt is the slowest work on a key press: two passes with
+ * `Intl.Segmenter`. The page gives this line a deferred copy of the prompt,
+ * and `memo` keeps the urgent render from running it, so the typed letter
+ * paints first and the counts follow.
+ *
+ * @param props.text - The trimmed prompt, deferred.
+ * @param props.tooLong - True when the link for this prompt is too long.
+ * @returns The line. It holds its height when it is empty.
+ */
+const PromptMeta = memo(function PromptMeta({ text, tooLong }: { text: string; tooLong: boolean }) {
+  // Step 1.1: count only a real prompt. Spaces only give no link and no count.
+  const characters = text ? countCharacters(text) : 0
+  const words = text ? countWords(text) : 0
+
+  return (
+    // The line is always in the page and holds its height, so the page does
+    // not move at the first character. It is not a live region, because it
+    // changes on every key. The field reads it as its description, so it is
+    // hidden from the reading order and not read a second time.
+    <p
+      id="prompt-meta"
+      aria-hidden="true"
+      className={cn(
+        "min-h-5 text-[0.8125rem] text-right tabular-nums",
+        tooLong ? "text-warning font-medium" : "text-muted-foreground"
+      )}
+    >
+      {text && (
+        <>
+          {characters} {characters === 1 ? "character" : "characters"}
+          {" · "}
+          {words} {words === 1 ? "word" : "words"}
+          {tooLong && (
+            <>
+              <br />
+              {OVERSIZE_MESSAGE}
+            </>
+          )}
+        </>
+      )}
+    </p>
+  )
+})
 
 /** No subscription: the platform of a device does not change. */
 const subscribeNever = () => () => {}
@@ -177,11 +227,12 @@ function PageContent() {
   const isTooLong = isUrlTooLong(url)
   // A prompt of spaces only gives no URL, so it gets no count either.
   const hasPrompt = trimmedPrompt.length > 0
-  const wordCount = countWords(trimmedPrompt)
-  const characterCount = countCharacters(trimmedPrompt)
-  // One short line, so it stays one line on a phone and the page does not
-  // move. The open button says what happens next.
-  const oversizeMessage = "Too long for a link."
+  // The counter and the link displays read deferred copies, so a key press
+  // paints the letter first. The open button uses the current link, so it
+  // never opens an old one.
+  const deferredPrompt = useDeferredValue(trimmedPrompt)
+  const deferredUrl = useDeferredValue(url)
+  const deferredTooLong = isUrlTooLong(deferredUrl)
   // The server has no navigator, so the first render shows "Ctrl".
   const isApple = useSyncExternalStore(subscribeNever, isApplePlatform, () => false)
   const promptRef = useRef<HTMLTextAreaElement>(null)
@@ -355,37 +406,11 @@ function PageContent() {
               className="w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-muted-foreground border border-border focus-ring focus:border-primary resize-y"
               rows={4}
             />
-            {/* The line is always in the page and holds its height. The page
-                then does not move when the first character arrives. It is not
-                a live region, because it changes on every key. */}
-            <p
-              id="prompt-meta"
-              // The field reads this line as its description. Hidden from the
-              // reading order, so it is not read a second time.
-              aria-hidden="true"
-              className={cn(
-                "min-h-5 text-[0.8125rem] text-right tabular-nums",
-                isTooLong ? "text-warning font-medium" : "text-muted-foreground"
-              )}
-            >
-              {hasPrompt && (
-                <>
-                  {characterCount} {characterCount === 1 ? "character" : "characters"}
-                  {" · "}
-                  {wordCount} {wordCount === 1 ? "word" : "words"}
-                  {isTooLong && (
-                    <>
-                      <br />
-                      <span aria-hidden="true">{oversizeMessage}</span>
-                    </>
-                  )}
-                </>
-              )}
-            </p>
+            <PromptMeta text={deferredPrompt} tooLong={deferredTooLong} />
             {/* One announcement, when the prompt goes over the limit. No role,
                 so an empty region is not a stop for TalkBack. */}
             <p aria-live="polite" aria-atomic="true" className="sr-only">
-              {isTooLong ? oversizeMessage : ""}
+              {isTooLong ? OVERSIZE_MESSAGE : ""}
             </p>
           </div>
 
@@ -514,8 +539,8 @@ function PageContent() {
             <CopyableInput
               id="generated-url"
               aria-labelledby="generated-url-label"
-              value={url}
-              copyDisabled={isTooLong}
+              value={deferredUrl}
+              copyDisabled={deferredTooLong}
               placeholder="Type a prompt to make a link."
             />
           </div>
@@ -534,7 +559,7 @@ function PageContent() {
             // cover too much of the screen. It then stays in the page.
             className="sticky @max-[16rem]:static bottom-0 z-20 -mx-4 flex flex-col gap-1.5 bg-background px-4 pt-2 pb-3 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-linear-to-t before:from-background before:to-transparent lg:static lg:mx-0 lg:bg-transparent lg:p-0 lg:before:hidden"
           >
-            <LinkPreview url={url} tooLong={isTooLong} className="@max-[16rem]:hidden lg:hidden" />
+            <LinkPreview url={deferredUrl} tooLong={deferredTooLong} className="@max-[16rem]:hidden lg:hidden" />
             <Button
               id="open-in-provider"
               onClick={handleOpenInProvider}

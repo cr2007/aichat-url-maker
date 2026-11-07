@@ -57,6 +57,14 @@ describe("countCharacters", () => {
     expect(countCharacters("\u{1F1EE}\u{1F1F3}")).toBe(1)
     expect(countCharacters("\u{1F44D}\u{1F3FD}")).toBe(1)
   })
+
+  test("the ASCII fast path agrees with the segmenter", () => {
+    // Plain ASCII skips the segmenter. A CR LF pair is ASCII but one
+    // character, so it must take the slow path.
+    expect(countCharacters("a\r\nb")).toBe(3)
+    expect(countCharacters("tab\there\n")).toBe(9)
+    expect(countCharacters("plain ".repeat(20000))).toBe(120000)
+  })
 })
 
 describe("cn", () => {

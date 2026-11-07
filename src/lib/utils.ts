@@ -34,6 +34,15 @@ const GRAPHEME_SEGMENTER = new Intl.Segmenter()
 const WORD_SEGMENTER = new Intl.Segmenter(undefined, { granularity: "word" })
 
 /**
+ * A character outside ASCII, or a CR LF pair. Text without one has one
+ * visible character for each UTF-16 unit, so no segmenter is needed.
+ */
+const NEEDS_SEGMENTER = /[\u0080-\uffff]|\r\n/
+
+/** One or more spaces, tabs or new lines: the edge between two words. */
+const WHITESPACE = /\s+/
+
+/**
  * Counts the characters that a person sees.
  *
  * A family emoji or a flag is one character on the screen, but it is several
@@ -49,8 +58,17 @@ const WORD_SEGMENTER = new Intl.Segmenter(undefined, { granularity: "word" })
  * ```
  */
 export function countCharacters(text: string): number {
-  // Step 1.1: take the text apart at the edges that a person sees.
-  return Array.from(GRAPHEME_SEGMENTER.segment(text)).length
+  // Step 1.1: plain ASCII text has one character for each unit. A phone took
+  // about 100ms a key to segment a long pasted document.
+  if (!NEEDS_SEGMENTER.test(text)) return text.length
+
+  // Step 1.2: take the text apart at the edges that a person sees. Count in a
+  // loop: `Array.from` built one array entry per character, and on a long
+  // paste the garbage collector then ran on every key.
+  const segments = GRAPHEME_SEGMENTER.segment(text)[Symbol.iterator]()
+  let count = 0
+  while (!segments.next().done) count++
+  return count
 }
 
 /**
@@ -73,7 +91,7 @@ export function countWords(text: string): number {
   let count = 0
   // Step 1.1: divide the text at each group of spaces. Spaces at the start
   // or at the end make empty strings. They are not words.
-  for (const group of text.split(/\s+/)) {
+  for (const group of text.split(WHITESPACE)) {
     if (!group) continue
 
     // Step 1.2: count a group in a spaced script as one word.

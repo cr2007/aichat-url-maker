@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
+import { memo, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react"
 import { ChevronDown, Link, Share } from "lucide-react"
 import { CopyButton } from "@/components/copyable-input"
 import { cn } from "@/lib/utils"
@@ -11,6 +11,12 @@ interface LinkPreviewProps {
   /** Classes for the row, such as the widths where it shows. */
   className?: string
 }
+
+/** The scheme at the start of the link. The readable line leaves it out. */
+const SCHEME = /^https:\/\//
+
+/** A plus sign, which URLSearchParams writes for a space. */
+const PLUS = /\+/g
 
 /** No subscription: the share support of a browser does not change. */
 const subscribeNever = () => () => {}
@@ -36,7 +42,7 @@ function canShare() {
 function readableUrl(url: string) {
   // Step 1.1: URLSearchParams writes a space as "+" and a real "+" as "%2B",
   // so the swap must come before the decode.
-  return decodeURIComponent(url.replace(/^https:\/\//, "").replace(/\+/g, " "))
+  return decodeURIComponent(url.replace(SCHEME, "").replace(PLUS, " "))
 }
 
 /**
@@ -181,4 +187,8 @@ function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
   )
 }
 
-export { LinkPreview }
+// memo: the page renders this box from a deferred link. The urgent render of
+// a key press then skips it, and the letter paints first.
+const MemoLinkPreview = memo(LinkPreview)
+
+export { MemoLinkPreview as LinkPreview }

@@ -137,4 +137,8 @@ function CopyableInput({ value, copyDisabled = false, className, ...props }: Cop
   )
 }
 
-export { CopyableInput, CopyButton }
+// memo: the page renders this field from a deferred link. The urgent render
+// of a key press then skips it, and the letter paints first.
+const MemoCopyableInput = React.memo(CopyableInput)
+
+export { MemoCopyableInput as CopyableInput, CopyButton }
