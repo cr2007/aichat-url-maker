@@ -731,6 +731,25 @@ describe("plain use for every reader", () => {
     await opened.close()
   })
 
+  test("a held key shows as pressed on its keycap, and a blur clears it", async () => {
+    const opened = await openPage({ width: 1280, height: 800 })
+    const pressed = () =>
+      opened.page.$$eval("#open-in-provider kbd kbd", (keys) => keys.map((key) => key.getAttribute("data-pressed")))
+    expect(await pressed()).toEqual(["false", "false"])
+    await opened.page.keyboard.down("Control")
+    expect(await pressed()).toEqual(["true", "false"])
+    await opened.page.keyboard.down("Enter")
+    expect(await pressed()).toEqual(["true", "true"])
+    await opened.page.keyboard.up("Enter")
+    await opened.page.keyboard.up("Control")
+    expect(await pressed()).toEqual(["false", "false"])
+    // A new tab takes the focus, and the key-up never comes.
+    await opened.page.keyboard.down("Control")
+    await opened.page.evaluate(() => window.dispatchEvent(new Event("blur")))
+    expect(await pressed()).toEqual(["false", "false"])
+    await opened.close()
+  })
+
   test("Arabic in the prompt runs from the right", async () => {
     const opened = await openPage()
     await fillPrompt(opened.page, "\u0644\u062e\u0635 \u0647\u0630\u0627 \u0627\u0644\u0628\u062d\u062b")

@@ -132,6 +132,55 @@ function isApplePlatform() {
   return /Mac|iPhone|iPad/.test(navigator.platform)
 }
 
+/** The keycap look. Pressed, it sinks 1px into a thinner bottom edge. */
+const KEYCAP_CLASS =
+  "inline-flex h-5 min-w-5 items-center justify-center rounded-[0.3125rem] border border-b-2 border-primary-foreground/35 bg-primary-foreground/15 px-1 font-sans text-[0.8125rem] leading-none font-medium data-[pressed=true]:translate-y-px data-[pressed=true]:border-b data-[pressed=true]:bg-primary-foreground/30"
+
+/**
+ * The open shortcut as keycaps, in the open button on a wide screen with a
+ * mouse. A held key shows as pressed. Screen readers get the shortcut from
+ * `aria-keyshortcuts` on the button, so the keys are hidden from them.
+ *
+ * @param props.apple - True to show Command instead of Ctrl.
+ * @returns The keycaps.
+ */
+function ShortcutKeys({ apple }: { apple: boolean }) {
+  const [held, setHeld] = useState({ mod: false, enter: false })
+
+  useEffect(() => {
+    // Step 1.1: follow the modifier and Enter. Other keys cause no render.
+    const read = (event: KeyboardEvent) => {
+      const mod = apple ? event.metaKey : event.ctrlKey
+      const enter = event.key === "Enter" ? event.type === "keydown" : undefined
+      setHeld((prev) => {
+        const next = { mod, enter: enter ?? prev.enter }
+        return next.mod === prev.mod && next.enter === prev.enter ? prev : next
+      })
+    }
+    // Step 1.2: Ctrl+Enter opens a new tab and the key-up never comes.
+    const clear = () => setHeld({ mod: false, enter: false })
+    window.addEventListener("keydown", read)
+    window.addEventListener("keyup", read)
+    window.addEventListener("blur", clear)
+    return () => {
+      window.removeEventListener("keydown", read)
+      window.removeEventListener("keyup", read)
+      window.removeEventListener("blur", clear)
+    }
+  }, [apple])
+
+  return (
+    <kbd aria-hidden="true" className="ml-1 hidden items-center gap-1 lg:pointer-fine:inline-flex">
+      <kbd data-pressed={held.mod} className={KEYCAP_CLASS}>
+        {apple ? "⌘" : "Ctrl"}
+      </kbd>
+      <kbd data-pressed={held.enter} className={KEYCAP_CLASS}>
+        {"↵"}
+      </kbd>
+    </kbd>
+  )
+}
+
 /**
  * Shows its content, or folds it away.
  *
@@ -589,10 +638,7 @@ function PageContent() {
               {isTooLong ? `Copy prompt and open ${provider.name}` : `Open in ${provider.name}`}
               {/* It opens a new tab. The arrow says so before the press. */}
               <ArrowUpRight aria-hidden="true" className="size-4 opacity-70" />
-              {/* The shortcut, for a mouse and keyboard on a wide screen only. */}
-              <kbd className="ml-1 hidden rounded border border-current/30 px-1 font-sans text-[0.8125rem] opacity-70 lg:pointer-fine:inline">
-                {isApple ? "\u2318 \u21b5" : "Ctrl \u21b5"}
-              </kbd>
+              <ShortcutKeys apple={isApple} />
             </Button>
             {copyFailed && (
               <p
