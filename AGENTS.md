@@ -112,7 +112,7 @@ src/
 ├─ assets/fonts/               # Instrument Sans, self-hosted: latin and latin-ext woff2
 ├─ components/
 │  ├─ copyable-input.tsx       # CopyButton, and the read-only URL field that uses it
-│  ├─ link-preview.tsx         # The link line in the phone dock, which grows into a panel
+│  ├─ link-preview.tsx         # The link box in the phone dock: one line that grows in place
 │  └─ ui/                      # shadcn-style Radix wrappers
 │     ├─ button.tsx
 │     ├─ segmented-control.tsx # Provider picker: one track, sliding indicator
@@ -121,6 +121,7 @@ src/
 │     └─ tooltip.tsx           # Feature descriptions on hover and focus
 └─ lib/
    ├─ console-banner.ts        # The greeting that the browser console shows
+   ├─ prompt-ideas.ts          # Example prompts for the empty prompt field, and the picker
    ├─ providers.tsx            # Provider configs, URL builders, oversized-URL fallback
    ├─ segmented-control.ts     # Pure indicator geometry for the segmented control
    └─ utils.ts                 # cn() helper, countCharacters(), countWords(), copyText()
@@ -158,6 +159,7 @@ production build.
 tests/
 ├─ unit/          # Pure functions. No DOM, no browser
 │  ├─ console-banner.test.ts
+│  ├─ prompt-ideas.test.ts
 │  ├─ providers.test.ts
 │  ├─ segmented-control.test.ts
 │  ├─ utils.test.ts
@@ -176,7 +178,8 @@ tests/
 |------|--------|
 | `tests/unit/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic |
 | `tests/unit/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
-| `tests/unit/utils.test.ts` | `countWords` whitespace handling and scripts without spaces, `countCharacters` for emoji, flags and skin tones, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
+| `tests/unit/prompt-ideas.test.ts` | `nextIdeaIndex` always picks a different idea in range, and every idea is unique, short and plain |
+| `tests/unit/utils.test.ts` | `countWords` whitespace handling and scripts without spaces, `countCharacters` for emoji, flags and skin tones and its ASCII fast path, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
 | `tests/unit/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget. Also `resolveAssetPath`, which takes the deploy base off a stylesheet URL |
 | `tests/unit/console-banner.test.ts` | The console art: one style for each `%c`, the row count, rows of equal width, no row wider than 80 columns, the ink and the paper, no emoji or em dash, no sentence, no `url()`, and a console that throws |
 
@@ -193,7 +196,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, and the selected states in forced colors |
 | `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
 
@@ -294,7 +297,10 @@ for an expert who makes ten links in a row.
 - Keep every sentence at grade 8 or below (Flesch-Kincaid). Pill names stay
   as ChatGPT names them, so a person finds the same words there.
 - The prompt placeholder is an example, not an instruction. It defines the
-  word better than a definition does.
+  word better than a definition does. It moves to a new example from
+  `PROMPT_IDEAS` every 5 seconds, only while the field is empty, not
+  focused, and on a visible tab. The first render shows the first idea, so
+  the prerendered page and hydration agree.
 - A button label starts with a verb, in sentence case.
 - An icon goes next to a label, never alone, unless the action is universal.
   The open button has a trailing arrow, because it opens a new tab.
@@ -397,6 +403,9 @@ columns, so a part-filled last row stays on the left. Flex centres every row.
 - An element enters from `scale-90` or higher with opacity. Nothing appears
   out of nothing. Never start from `scale-0`.
 - A press scales a control to 0.97, in every control. Use one value.
+- `--ease-out` is also `--default-transition-timing-function`, so a
+  transition with no easing class does not use the slower Tailwind curve.
+  The app has one curve. Do not add a second `cubic-bezier`.
 - Use `ease-out` for an element that enters. Keep a UI transition at or below
   300ms. `--ease-out` in `index.css` is a strong curve, so every `ease-out`
   utility uses it. Write `var(--ease-out)` in plain CSS, not the keyword.
@@ -407,6 +416,31 @@ columns, so a part-filled last row stays on the left. Flex centres every row.
 - A hover shadow changes at once. Do not put `box-shadow` in a transition list.
 - A control that a person meets many times a day has no entrance animation. The
   URL field and the open button have none.
+
+### Speed
+
+A key press must paint the letter at once, also after a long paste.
+Measured on a real Android phone over adb with the Event Timing API (the
+basis of INP), on the production build:
+
+| Prompt | Before | After |
+|---|---|---|
+| 72 characters | 40ms | 40ms |
+| 100,000 characters, mixed scripts | 112 to 120ms | 32ms |
+| 100,000 characters, English | 40ms | 32ms |
+
+- The counter (`PromptMeta` in `App.tsx`), `LinkPreview` and
+  `CopyableInput` read deferred copies of the prompt and the link
+  (`useDeferredValue`) and are wrapped in `memo`. The urgent render of a
+  key press skips them. The open button uses the current link.
+- `countCharacters` skips the segmenter for plain ASCII text. It counts in a
+  loop, not with `Array.from`, so a long paste does not feed the garbage
+  collector.
+- Every regex and `Intl.Segmenter` is made once, at module level.
+- Not changed, with the reason: `new URL()` in `buildURL` runs once a
+  render and costs about 1 microsecond; the encoding is the cost. There is no
+  chain of `await`s on a hot path. `PROVIDERS` has three entries, so an
+  array of structures is right. The app has no spinner.
 
 ### Element IDs
 
@@ -462,6 +496,10 @@ grammar in tables instead.
 The page is one column on a phone and two columns from 1024px: the inputs on the
 left, the result on the right.
 
+- Do not tie the two columns together with `subgrid`. The result column is
+  sticky and has two rows to the four on the left, so shared rows would
+  break the sticky column. The first controls already share one line, and a
+  test checks it.
 - `#inputs-column` and `#result-column` use `contents` below 1024px, so their
   children join the one column. The column uses `flex gap-5`, not `space-y`,
   because `space-y` does not reach through `display: contents`.
