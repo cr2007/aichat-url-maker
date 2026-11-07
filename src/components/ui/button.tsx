@@ -25,9 +25,10 @@ const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
     // `scale` is named because Tailwind v4 compiles `scale-*` to the
-    // independent `scale` property, which `transform` does not cover.
-    "transition-[background-color,box-shadow,transform,scale] duration-150",
-    "active:scale-[0.98] active:shadow-none motion-reduce:active:scale-100",
+    // independent `scale` property, which `transform` does not cover. The
+    // hover shadow is not named: it changes at once.
+    "transition-[background-color,opacity,scale] duration-150",
+    "active:scale-[0.97] active:shadow-none motion-reduce:active:scale-100",
     "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
     "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
     "focus-ring",
@@ -64,7 +65,15 @@ const buttonVariants = cva(
   }
 )
 
-/** Styled button. Renders as a `<Slot>` instead of `<button>` when `asChild` is set. */
+/**
+ * A styled button. It renders as a `<Slot>` instead of `<button>` when
+ * `asChild` is set.
+ *
+ * @param props.variant - The look of the button.
+ * @param props.size - The size of the button.
+ * @param props.asChild - True to put the style on the child element.
+ * @returns The button.
+ */
 function Button({
   className,
   variant = "default",

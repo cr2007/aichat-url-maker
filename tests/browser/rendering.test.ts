@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
-import { fillPrompt, openPage, startHarness, stopHarness, OVERSIZED_PROMPT } from "./harness"
+import { fillPrompt, generatedUrl, openPage, startHarness, stopHarness, OVERSIZED_PROMPT } from "./harness"
 
 /** The widths that the layout must hold, in pixels. */
 const WIDTHS = [320, 375, 414, 768, 1024]
@@ -88,6 +88,45 @@ describe("text at 200 percent", () => {
     expect(result.button).toBeGreaterThan(44)
     await opened.close()
   })
+
+  test("the pinned open button leaves most of the screen to the content", async () => {
+    // A long notice once sat in the bar, and at large text it covered more
+    // than half of a small screen.
+    const opened = await openPage({ width: 320, height: 700 })
+    await opened.page.evaluate(() => {
+      document.documentElement.style.fontSize = "32px"
+    })
+    await fillPrompt(opened.page, OVERSIZED_PROMPT)
+    const share = await opened.page.evaluate(
+      () => document.getElementById("open-action-section")!.getBoundingClientRect().height / innerHeight
+    )
+    expect(share).toBeLessThan(0.4)
+    // The link is still in the page, in the field above the dock.
+    expect(await opened.page.isVisible("#generated-url")).toBe(true)
+    await opened.close()
+  })
+
+  for (const width of [320, 390]) {
+    test(`the provider labels and the open button hold at ${width}px`, async () => {
+      // The labels once overlapped and the button text was cut at both ends,
+      // because the layout switched on the width of the screen in pixels.
+      const opened = await openPage({ width })
+      await opened.page.evaluate(() => {
+        document.documentElement.style.fontSize = "32px"
+      })
+      await fillPrompt(opened.page, OVERSIZED_PROMPT)
+
+      const result = await opened.page.evaluate(() => ({
+        scrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        cut: [...document.querySelectorAll<HTMLElement>("#provider-picker [role=radio], #open-in-provider")]
+          .filter((el) => el.scrollWidth > el.clientWidth + 1)
+          .map((el) => el.id || (el.textContent ?? "").trim()),
+      }))
+      expect(result.cut).toEqual([])
+      expect(result.scrolls).toBe(false)
+      await opened.close()
+    })
+  }
 })
 
 describe("the page without JavaScript", () => {
@@ -243,11 +282,161 @@ describe("the oversized prompt", () => {
       () => document.getElementById("open-in-provider")?.textContent ?? ""
     )
     expect(label).toContain("Copy Prompt")
-    // The reason stays on the page, so a touch device sees it too.
+    // The reason stays on the page, so a touch device sees it too. It is one
+    // message, in the counter line, and not a second one in the pinned bar.
     const notice = await opened.page.evaluate(
-      () => document.getElementById("oversize-notice")?.textContent ?? ""
+      () => document.getElementById("prompt-meta")?.textContent ?? ""
     )
-    expect(notice.length).toBeGreaterThan(20)
+    expect(notice).toContain("copies the prompt")
+    expect(await opened.page.locator("#oversize-notice").count()).toBe(0)
     await opened.close()
+  })
+})
+
+describe("the page does not move", () => {
+  test("the first character leaves every block where it was", async () => {
+    // The URL box and the open button once appeared with the first
+    // character, and the page below them moved down by 161px.
+    const opened = await openPage({ width: 760, height: 1400 })
+    const read = () =>
+      opened.page.evaluate(() => ({
+        open: document.getElementById("open-in-provider")!.getBoundingClientRect().top,
+        url: document.getElementById("generated-url")!.getBoundingClientRect().top,
+        how: document.getElementById("how-it-works-toggle")!.getBoundingClientRect().top,
+        height: document.documentElement.scrollHeight,
+      }))
+    const before = await read()
+    await fillPrompt(opened.page)
+    expect(await read()).toEqual(before)
+    await opened.close()
+  })
+
+  test("the open button stays in view on a phone in landscape", async () => {
+    // At 568 x 320 the button once sat two screens below the first view.
+    const opened = await openPage({ width: 568, height: 320 })
+    await fillPrompt(opened.page)
+    const bottom = await opened.page.evaluate(
+      () => document.getElementById("open-in-provider")!.getBoundingClientRect().bottom
+    )
+    expect(bottom).toBeLessThanOrEqual(320)
+    await opened.close()
+  })
+
+  test("it has one column below 1024px and two from 1024px", async () => {
+    const stacked = await openPage({ width: 768 })
+    const narrow = await stacked.page.evaluate(() => ({
+      prompt: document.getElementById("prompt-input")!.getBoundingClientRect(),
+      url: document.getElementById("url-preview-toggle")!.getBoundingClientRect(),
+    }))
+    expect(narrow.url.top).toBeGreaterThan(narrow.prompt.bottom)
+    await stacked.close()
+
+    const wide = await openPage({ width: 1024 })
+    const columns = await wide.page.evaluate(() => ({
+      prompt: document.getElementById("prompt-input")!.getBoundingClientRect(),
+      url: document.getElementById("generated-url")!.getBoundingClientRect(),
+    }))
+    expect(columns.url.left).toBeGreaterThanOrEqual(columns.prompt.right)
+    await wide.close()
+  })
+})
+
+describe("a provider without a control", () => {
+  test("the row folds away, leaves the tab order, and comes back", async () => {
+    const opened = await openPage({ width: 760 })
+    await opened.page.click('#provider-picker [role="radio"]:has-text("Perplexity")')
+    await opened.page.waitForTimeout(450)
+
+    const folded = await opened.page.evaluate(() => ({
+      features: document.getElementById("feature-collapse")!.getBoundingClientRect().height,
+      temporary: document.getElementById("temporary-chat-collapse")!.getBoundingClientRect().height,
+      featuresInert: document.getElementById("feature-collapse")!.hasAttribute("inert"),
+      temporaryInert: document.getElementById("temporary-chat-collapse")!.hasAttribute("inert"),
+    }))
+    expect(folded.features).toBeLessThanOrEqual(1)
+    expect(folded.temporary).toBeLessThanOrEqual(1)
+    expect(folded.featuresInert && folded.temporaryInert).toBe(true)
+
+    await opened.page.click('#provider-picker [role="radio"]:has-text("ChatGPT")')
+    await opened.page.waitForTimeout(450)
+    const open = await opened.page.evaluate(() => ({
+      features: document.getElementById("feature-collapse")!.getBoundingClientRect().height,
+      inert: document.getElementById("feature-collapse")!.hasAttribute("inert"),
+    }))
+    expect(open.features).toBeGreaterThan(100)
+    expect(open.inert).toBe(false)
+    await opened.close()
+  })
+
+  test("the row keeps the text of the last provider while it folds", async () => {
+    // The name and the icon once changed to Perplexity in the middle of the
+    // fold, because the row read the current provider.
+    const opened = await openPage({ width: 760 })
+    await opened.page.click('#provider-picker [role="radio"]:has-text("Perplexity")')
+    await opened.page.waitForTimeout(450)
+    const text = await opened.page.evaluate(
+      () => document.getElementById("temporary-chat-section")!.textContent
+    )
+    expect(text).toContain("ChatGPT")
+    expect(text).not.toContain("Perplexity")
+    await opened.close()
+  })
+})
+
+describe("the dock on a phone", () => {
+  test("every feature is on the first screen, above the dock with the link", async () => {
+    // The URL field and the pinned button took the first screen, and the
+    // features started under the button. The link now lives in the dock.
+    const phone = await openPage({ touch: true, width: 412, height: 740 })
+    await fillPrompt(phone.page)
+    const r = await phone.page.evaluate(() => ({
+      pills: [...document.querySelectorAll("#feature-picker button")].map((b) => b.getBoundingClientRect().bottom),
+      dock: document.getElementById("open-action-section")!.getBoundingClientRect().top,
+      line: document.getElementById("url-preview-toggle")!.textContent ?? "",
+      field: getComputedStyle(document.getElementById("generated-url-section")!).display,
+    }))
+    expect(r.pills.length).toBeGreaterThan(0)
+    for (const bottom of r.pills) expect(bottom).toBeLessThanOrEqual(r.dock)
+    expect(r.line).toContain("chatgpt.com/?q=")
+    expect(r.field).toBe("none")
+    await phone.close()
+  })
+
+  test("a tap on the link line grows it into a panel with the whole link", async () => {
+    const phone = await openPage({ touch: true, width: 412, height: 740 })
+    await fillPrompt(phone.page)
+    const toggle = phone.page.locator("#url-preview-toggle")
+    expect(await toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(await phone.page.isVisible("#url-full-panel")).toBe(false)
+    // The focus move once scrolled the page on every open and close.
+    const scrollY = () => phone.page.evaluate(() => scrollY)
+    const before = await scrollY()
+
+    // A raw tap. A locator tap scrolls the element into view first.
+    const line = (await toggle.boundingBox())!
+    await phone.page.touchscreen.tap(line.x + 40, line.y + line.height / 2)
+    await phone.page.waitForTimeout(400)
+    expect(await toggle.getAttribute("aria-expanded")).toBe("true")
+    const open = await phone.page.evaluate(() => {
+      const panel = document.getElementById("url-full-panel")!.getBoundingClientRect()
+      const line = document.getElementById("url-preview-toggle")!.getBoundingClientRect()
+      return {
+        text: document.getElementById("url-full")!.textContent,
+        focus: document.activeElement?.id,
+        grewUp: panel.top < line.top - 20,
+        sameBottom: Math.abs(panel.bottom - line.bottom) < 1,
+      }
+    })
+    expect(open.text).toBe(await generatedUrl(phone.page))
+    expect(open).toMatchObject({ focus: "url-full-close", grewUp: true, sameBottom: true })
+    expect(await scrollY()).toBe(before)
+
+    await phone.page.keyboard.press("Escape")
+    await phone.page.waitForTimeout(400)
+    expect(await toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(await phone.page.evaluate(() => document.activeElement?.id)).toBe("url-preview-toggle")
+    expect(await scrollY()).toBe(before)
+    expect(await phone.page.isVisible("#url-full-panel")).toBe(false)
+    await phone.close()
   })
 })

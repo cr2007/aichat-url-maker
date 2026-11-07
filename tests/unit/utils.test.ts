@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { cn, copyText, countWords } from "../../src/lib/utils"
+import { cn, copyText, countCharacters, countWords } from "../../src/lib/utils"
 
 describe("countWords", () => {
   test("counts plain words", () => {
@@ -26,6 +26,36 @@ describe("countWords", () => {
     // "Summarize this paper." is 3, "Then list three open questions." is 5.
     const prompt = "Summarize this paper.\nThen list three open questions."
     expect(countWords(prompt)).toBe(8)
+  })
+})
+
+describe("countWords in scripts without spaces", () => {
+  test("counts the words of a Chinese sentence, not one", () => {
+    expect(countWords("\u4ECA\u5929\u5929\u6C14\u5F88\u597D")).toBeGreaterThan(1)
+  })
+
+  test("counts the words of a Thai sentence, not one", () => {
+    expect(countWords("\u0E09\u0E31\u0E19\u0E23\u0E31\u0E01\u0E04\u0E38\u0E13")).toBeGreaterThan(1)
+  })
+
+  test("keeps one word for a hyphenated English word", () => {
+    expect(countWords("state-of-the-art")).toBe(1)
+  })
+})
+
+describe("countCharacters", () => {
+  test("counts plain text and empty text", () => {
+    expect(countCharacters("")).toBe(0)
+    expect(countCharacters("hello")).toBe(5)
+  })
+
+  test("counts a family emoji as one character", () => {
+    expect(countCharacters("\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}")).toBe(1)
+  })
+
+  test("counts a flag and a skin tone as one character each", () => {
+    expect(countCharacters("\u{1F1EE}\u{1F1F3}")).toBe(1)
+    expect(countCharacters("\u{1F44D}\u{1F3FD}")).toBe(1)
   })
 })
 

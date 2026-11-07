@@ -76,6 +76,10 @@ export interface PageOptions {
   javaScript?: boolean
   /** Set "reduce" to test the reduced motion rules. */
   reducedMotion?: "reduce" | "no-preference"
+  /** Set "active" to test the forced colors mode. */
+  forcedColors?: "active" | "none"
+  /** Set true to emulate a phone: a coarse pointer, touch, and no hover. */
+  touch?: boolean
 }
 
 /** A page, its context, and the errors it reported. */
@@ -106,6 +110,9 @@ export async function openPage(options: PageOptions = {}): Promise<OpenPage> {
     viewport: { width: options.width ?? 760, height: options.height ?? 1200 },
     javaScriptEnabled: options.javaScript ?? true,
     reducedMotion: options.reducedMotion,
+    forcedColors: options.forcedColors,
+    hasTouch: options.touch,
+    isMobile: options.touch,
     deviceScaleFactor: 1,
   })
 

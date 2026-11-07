@@ -21,10 +21,10 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* The tick enters from scale 0.9 with opacity. It does not overshoot. */
 @keyframes check-pop {
-  0%   { transform: scale(0.7); }
-  50%  { transform: scale(1.2); }
-  100% { transform: scale(1); }
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
 }
 
 @theme inline {
@@ -71,7 +71,14 @@
   --color-segment-track: var(--segment-track);
   --color-segment-thumb: var(--segment-thumb);
   --color-segment-thumb-glass: var(--segment-thumb-glass);
-  --animate-fade-in: fade-in 0.15s ease-out;
+  --animate-fade-in: fade-in 0.15s var(--ease-out);
+}
+
+/* One strong ease-out for every element that enters or responds. The built-in
+   ease-out curve is weak, so a response seems slow at its start. This token
+   changes each `ease-out` utility in the app. */
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :root {
@@ -135,10 +142,10 @@
      to put color on the background, not on the text, and to keep a tinted
      background on one control. The "Open in" button is that control at rest,
      so this tint must not stay after the drag. */
-  --segment-thumb-glass: oklch(0.78 0.08 264 / 0.45);
+  --segment-thumb-glass: oklch(0.62 0.15 264 / 0.6);
   --segment-thumb-specular: oklch(1 0 0 / 0.95);
-  --segment-thumb-underglow: oklch(0.53 0.18 264 / 0.30);
-  --segment-thumb-glow: oklch(0.53 0.18 264 / 0.34);
+  --segment-thumb-underglow: oklch(0.53 0.18 264 / 0.4);
+  --segment-thumb-glow: oklch(0.53 0.18 264 / 0.42);
   --segment-thumb-sheen: linear-gradient(
     to bottom,
     oklch(1 0 0 / 0.78) 0%,
@@ -185,10 +192,10 @@
       --sidebar-ring: oklch(0.67 0.15 264);
       --segment-track: oklch(1 0 0 / 0.06);
       --segment-thumb: oklch(0.32 0 0);
-      --segment-thumb-glass: oklch(0.62 0.05 264 / 0.42);
+      --segment-thumb-glass: oklch(0.62 0.15 264 / 0.6);
       --segment-thumb-specular: oklch(1 0 0 / 0.34);
-      --segment-thumb-underglow: oklch(0.67 0.15 264 / 0.34);
-      --segment-thumb-glow: oklch(0.67 0.15 264 / 0.38);
+      --segment-thumb-underglow: oklch(0.67 0.15 264 / 0.4);
+      --segment-thumb-glow: oklch(0.67 0.15 264 / 0.42);
       --segment-thumb-sheen: linear-gradient(
         to bottom,
         oklch(1 0 0 / 0.22) 0%,
@@ -232,9 +239,16 @@
   background-image: none;
   box-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.08);
   transition:
-    background-color 220ms ease-out,
-    box-shadow 220ms ease-out,
+    background-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
     transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* A keyboard selection does not animate. A person who holds an arrow key
+   makes many selections, and a slide would trail behind them. The pointer
+   still gets the slide, because a click does not set :focus-visible. */
+.segment-track:has(:focus-visible) .segment-indicator {
+  transition: none;
 }
 
 .segment-indicator[data-active="true"] {
@@ -256,8 +270,8 @@
    transform transition. The indicator would be late without this rule. */
 .segment-indicator[data-dragging="true"] {
   transition:
-    background-color 220ms ease-out,
-    box-shadow 220ms ease-out;
+    background-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out);
   will-change: transform;
 }
 
@@ -280,7 +294,7 @@
 }
 
 .segment-item svg {
-  transition: transform 180ms ease-out;
+  transition: transform 180ms var(--ease-out);
 }
 
 /* During a drag the candidate is bright and every other segment is dim. This
@@ -320,7 +334,75 @@
 }
 }
 
+/*
+ * Forced colors. The browser replaces every colour with a system colour and
+ * removes shadows. Fills and shadows then no longer show a state, so each
+ * selected control needs a cue that survives. The system colour names keep
+ * the cue in the palette that the person chose.
+ *
+ * The indicator gets an outline. It must not use a border, because the
+ * indicator is placed by its geometry. A selected pill gets the Highlight
+ * fill. `forced-color-adjust: none` is needed so the browser keeps that fill.
+ * The open button gets a border, because its fill is lost.
+ *
+ * This block is outside every layer. A Tailwind utility such as
+ * `aria-pressed:bg-primary` is in the utilities layer and would outrank a rule
+ * in the components layer.
+ */
+@media (forced-colors: active) {
+  .segment-indicator {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  /* The tooltip trigger writes its own data-slot over the pill. The id of the
+     group is therefore the stable hook. */
+  #feature-picker [aria-pressed="true"] {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    border-color: Highlight;
+    color: HighlightText;
+  }
+
+  [data-slot="button"] {
+    border: 1px solid ButtonText;
+  }
+
+  [data-slot="tooltip-content"] {
+    border: 1px solid CanvasText;
+  }
+}
+
 @layer base {
+  /* The open button sticks to the bottom edge. A control that takes the focus
+     must not end under it. This padding keeps the scroll clear of the bar. */
+  html {
+    scroll-padding-bottom: 8rem;
+    /* No font inflation when the phone turns to landscape. */
+    -webkit-text-size-adjust: 100%;
+    /* No grey flash on a tap. Every control has its own press scale. */
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* The page is a tool, not a document. A long press on a label, a count or
+     a control must not select text and open the cut and copy bar. The two
+     fields are the content, so they stay selectable. iOS needs the explicit
+     rule on the fields: it can make a field read-only inside a parent with
+     no selection. A control also gets no callout on iOS, and a tap on it
+     fires at once, with no double tap zoom. */
+  main {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  main textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  button,
+  [role="button"],
+  [role="radio"] {
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
   * {
     @apply border-border outline-ring/50;
   }

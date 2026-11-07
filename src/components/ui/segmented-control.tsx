@@ -28,7 +28,7 @@ const DRAG_THRESHOLD_PX = 3
  * still scroll vertically.
  */
 const TRACK_CLASS =
-  "segment-track relative grid w-full touch-pan-y rounded-xl border border-border bg-segment-track p-1"
+  "segment-track @container relative grid w-full touch-pan-y rounded-xl border border-border bg-segment-track p-1"
 
 /**
  * The indicator that shows the selected segment.
@@ -46,13 +46,16 @@ const INDICATOR_CLASS =
 /**
  * One segment.
  *
- * Below 376px the icon moves above the label. At that width three segments
- * cannot hold an icon and a label on one line. The control stacks the content
- * and does not truncate it, so the label stays readable at large text sizes.
+ * When the track is narrower than 21.5rem, the icon moves above the label.
+ * Three segments cannot hold an icon and a label on one line at that width.
+ * The query reads the width of the track in rem, not the width of the screen
+ * in pixels. The switch therefore also happens when the text size grows.
+ * The control stacks the content and does not truncate it. A label that is
+ * still too wide breaks onto a second line.
  */
 const SEGMENT_CLASS = cn(
   "segment-item relative z-10 flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1.5",
-  "min-[376px]:flex-row min-[376px]:gap-2 sm:px-3",
+  "@min-[21.5rem]:flex-row @min-[21.5rem]:gap-2 sm:px-3",
   // The label colour lives in `.segment-item` in index.css. A Tailwind colour
   // utility here would outrank the drag rules, because the utilities layer is
   // above the components layer.
@@ -338,7 +341,7 @@ function SegmentedControl<T extends string>({
           className={SEGMENT_CLASS}
         >
           {option.icon}
-          <span>{option.label}</span>
+          <span className="min-w-0 text-center wrap-anywhere">{option.label}</span>
         </ToggleGroupPrimitive.Item>
       ))}
     </ToggleGroupPrimitive.Root>

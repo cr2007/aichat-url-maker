@@ -20,11 +20,39 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * The scripts that do not put spaces between words. A space-based count gives
+ * one word for a whole sentence in these scripts.
+ */
+const UNSPACED_SCRIPT =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
+
+/**
+ * Counts the characters that a person sees.
+ *
+ * A family emoji or a flag is one character on the screen, but it is several
+ * UTF-16 units. `String.length` counts the units, so this function counts
+ * grapheme clusters instead.
+ *
+ * @param text - The text to count.
+ * @returns The number of visible characters. Empty text gives 0.
+ *
+ * @example
+ * ```ts
+ * countCharacters("a\u{1F44D}\u{1F3FD}") // 2
+ * ```
+ */
+export function countCharacters(text: string): number {
+  // Step 1.1: take the text apart at the edges that a person sees.
+  return Array.from(new Intl.Segmenter().segment(text)).length
+}
+
+/**
  * Counts the words in a string.
  *
  * A word is a group of characters between spaces. The function ignores
  * spaces at the start and at the end. It also ignores repeated spaces,
- * new lines and tabs.
+ * new lines and tabs. A group in a script without spaces, such as Chinese or
+ * Thai, is divided into its words with the browser dictionary.
  *
  * @param text - The text to count. This text comes from a textarea.
  * @returns The number of words. Empty text gives 0.
@@ -35,10 +63,25 @@ export function cn(...inputs: ClassValue[]) {
  * ```
  */
 export function countWords(text: string): number {
+  let count = 0
   // Step 1.1: divide the text at each group of spaces. Spaces at the start
-  // or at the end make empty strings.
-  // Step 1.2: remove the empty strings. They are not words.
-  return text.split(/\s+/).filter(Boolean).length
+  // or at the end make empty strings. They are not words.
+  for (const group of text.split(/\s+/)) {
+    if (!group) continue
+
+    // Step 1.2: count a group in a spaced script as one word.
+    if (!UNSPACED_SCRIPT.test(group)) {
+      count++
+      continue
+    }
+
+    // Step 1.3: a group in an unspaced script holds many words. Count the
+    // pieces that the dictionary marks as words, not the punctuation.
+    for (const part of new Intl.Segmenter(undefined, { granularity: "word" }).segment(group)) {
+      if (part.isWordLike) count++
+    }
+  }
+  return count
 }
 
 /**

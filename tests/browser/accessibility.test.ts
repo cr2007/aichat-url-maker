@@ -176,3 +176,31 @@ describe("reduced motion", () => {
     await opened.close()
   })
 })
+
+describe("forced colors", () => {
+  test("a selected control differs from an unselected one", async () => {
+    // Forced colors remove fills and shadows. The selected pill and the
+    // indicator then looked the same as the rest.
+    const opened = await openPage({ forcedColors: "active" })
+    await fillPrompt(opened.page)
+    await opened.page.click('#feature-picker button:has-text("Search")')
+    await opened.page.waitForTimeout(300)
+
+    const state = await opened.page.evaluate(() => {
+      const fill = (element: Element) => getComputedStyle(element).backgroundColor
+      const selected = document.querySelector('#feature-picker button[aria-pressed="true"]')!
+      const idle = document.querySelector('#feature-picker button[aria-pressed="false"]')!
+      const indicator = document.querySelector(".segment-indicator")!
+      return {
+        selected: fill(selected),
+        idle: fill(idle),
+        indicatorOutline: getComputedStyle(indicator).outlineStyle,
+        buttonBorder: getComputedStyle(document.getElementById("open-in-provider")!).borderTopStyle,
+      }
+    })
+    expect(state.selected).not.toBe(state.idle)
+    expect(state.indicatorOutline).toBe("solid")
+    expect(state.buttonBorder).toBe("solid")
+    await opened.close()
+  })
+})

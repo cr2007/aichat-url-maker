@@ -190,7 +190,7 @@ describe("the copy button", () => {
       })
     })
 
-    await opened.page.click('[aria-label="Copy link"]')
+    await opened.page.click('#url-preview [aria-label="Copy link"]')
     await opened.page.waitForTimeout(300)
 
     const status = await opened.page.evaluate(() =>
@@ -248,6 +248,427 @@ describe("the whole page", () => {
     await opened.page.click("#how-it-works-toggle")
     await opened.page.waitForTimeout(400)
     expect(opened.errors).toEqual([])
+    await opened.close()
+  })
+})
+
+describe("the description of a pill", () => {
+  test("it reaches a screen reader while the tooltip is closed", async () => {
+    // The pills once pointed `aria-describedby` at the tooltip, which is in
+    // the page only while it is open. At rest the id matched nothing.
+    const opened = await openPage()
+    const missing = await opened.page.evaluate(() =>
+      [...document.querySelectorAll("#feature-picker button")]
+        .filter((pill) => {
+          const target = document.getElementById(pill.getAttribute("aria-describedby") ?? "")
+          return !target || !(target.textContent ?? "").trim()
+        })
+        .map((pill) => (pill.textContent ?? "").trim())
+    )
+    expect(missing).toEqual([])
+    await opened.close()
+  })
+})
+
+describe("the prompt counter", () => {
+  test("it is not a live region, and the warning is announced once", async () => {
+    // The counter changes on every key. A live region then spoke the count
+    // after each key press.
+    const opened = await openPage()
+    const meta = await opened.page.evaluate(() => {
+      const element = document.getElementById("prompt-meta")!
+      return { role: element.getAttribute("role"), live: element.getAttribute("aria-live") }
+    })
+    expect(meta).toEqual({ role: null, live: null })
+
+    const status = () =>
+      opened.page.evaluate(
+        () => document.querySelector("#prompt-section [role=status]")?.textContent?.trim() ?? ""
+      )
+    await fillPrompt(opened.page)
+    expect(await status()).toBe("")
+    await fillPrompt(opened.page, OVERSIZED_PROMPT)
+    expect(await status()).toMatch(/too long/i)
+    await opened.close()
+  })
+
+  test("it counts what a person sees", async () => {
+    // A family emoji is 11 UTF-16 units and one character on the screen.
+    const opened = await openPage()
+    await fillPrompt(opened.page, "\u{1F468}‍\u{1F469}‍\u{1F467}‍\u{1F466}")
+    // Anchored: "11 characters" also contains "1 character".
+    expect(await opened.page.textContent("#prompt-meta")).toMatch(/^1 character\b/)
+    await opened.close()
+  })
+
+  test("it stays empty for a prompt of spaces only", async () => {
+    const opened = await openPage()
+    await fillPrompt(opened.page, "       ")
+    expect((await opened.page.textContent("#prompt-meta"))?.trim()).toBe("")
+    await opened.close()
+  })
+})
+
+describe("motion that a person meets often", () => {
+  const indicatorDurations = (page: import("playwright").Page) =>
+    page.evaluate(() => getComputedStyle(document.querySelector(".segment-indicator")!).transitionDuration)
+
+  test("a keyboard selection does not slide the indicator", async () => {
+    // An arrow key can repeat many times. The slide then trails behind the
+    // keys, so a keyboard selection has no motion.
+    const opened = await openPage()
+    await opened.page.click("#prompt-input")
+    await opened.page.keyboard.press("Shift+Tab")
+    await opened.page.keyboard.press("ArrowRight")
+    await opened.page.waitForTimeout(100)
+    expect(await indicatorDurations(opened.page)).toBe("0s")
+    await opened.close()
+  })
+
+  test("a click still slides the indicator", async () => {
+    const opened = await openPage()
+    await opened.page.click('#provider-picker [role="radio"]:has-text("Claude")')
+    expect(await indicatorDurations(opened.page)).toContain("0.26s")
+    await opened.close()
+  })
+
+  test("a tooltip that opens inside the skip delay has no animation", async () => {
+    // Radix sets data-state="instant-open" on a tooltip that opens while
+    // another one is open or just closed. The rule must remove its animation.
+    // The test reads the rule, because the pointer path that triggers the state
+    // is not stable in a script.
+    const opened = await openPage()
+    const rule = await opened.page.evaluate(() => {
+      // The utilities sit inside a cascade layer, so the search goes down
+      // through the nested rules.
+      const find = (rules: CSSRuleList): string | null => {
+        for (const item of rules) {
+          if (item instanceof CSSStyleRule && item.selectorText.includes("instant-open")) {
+            return item.style.animationName || item.style.animation
+          }
+          if ("cssRules" in item) {
+            const found = find((item as CSSGroupingRule).cssRules)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      for (const sheet of document.styleSheets) {
+        // The font stylesheet comes from another origin, and the browser
+        // refuses to show its rules.
+        try {
+          const found = find(sheet.cssRules)
+          if (found) return found
+        } catch {
+          continue
+        }
+      }
+      return null
+    })
+    expect(rule).toBe("none")
+    await opened.close()
+  })
+
+  test("the tooltip is inside the main landmark", async () => {
+    const opened = await openPage()
+    await opened.page.locator("#feature-picker button", { hasText: /^Search$/ }).hover()
+    await opened.page.waitForTimeout(700)
+    const inside = await opened.page.evaluate(
+      () => document.querySelector("[data-slot=tooltip-content]")?.closest("#app") !== null
+    )
+    expect(inside).toBe(true)
+    await opened.close()
+  })
+
+  test("the open button eases when the prompt makes it ready", async () => {
+    const opened = await openPage()
+    const property = await opened.page.evaluate(
+      () => getComputedStyle(document.getElementById("open-in-provider")!).transitionProperty
+    )
+    expect(property).toContain("opacity")
+    await opened.close()
+  })
+})
+
+describe("a phone", () => {
+  test("the prompt field is 16px, so iOS does not zoom on focus", async () => {
+    const phone = await openPage({ touch: true, width: 390, height: 844 })
+    const size = (page: import("playwright").Page) =>
+      page.evaluate(() => Number.parseFloat(getComputedStyle(document.getElementById("prompt-input")!).fontSize))
+    expect(await size(phone.page)).toBeGreaterThanOrEqual(16)
+    await phone.close()
+
+    const desktop = await openPage()
+    expect(await size(desktop.page)).toBeLessThan(16)
+    await desktop.close()
+  })
+
+  test("a control is not selectable and has no double tap delay", async () => {
+    const opened = await openPage({ touch: true, width: 390, height: 844 })
+    const styles = await opened.page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("#feature-picker button, #open-in-provider, #how-it-works-toggle")].map((el) => {
+        const style = getComputedStyle(el)
+        return { userSelect: style.userSelect, touchAction: style.touchAction }
+      })
+    )
+    expect(styles.length).toBeGreaterThan(3)
+    expect(new Set(styles.map((s) => s.userSelect))).toEqual(new Set(["none"]))
+    expect(new Set(styles.map((s) => s.touchAction))).toEqual(new Set(["manipulation"]))
+    await opened.close()
+  })
+
+  test("the keyboard shrinks the layout, so the pinned button rises with it", async () => {
+    const opened = await openPage()
+    const content = await opened.page.getAttribute('meta[name="viewport"]', "content")
+    expect(content).toContain("interactive-widget=resizes-content")
+    await opened.close()
+  })
+})
+
+describe("the tooltips for each kind of input", () => {
+  const PHONE = { touch: true, width: 390, height: 844 } as const
+  type TestPage = import("playwright").Page
+
+  /** The centre of the Search pill. */
+  async function searchPill(page: TestPage) {
+    const pill = page.getByRole("button", { name: /^Search$/ })
+    const box = (await pill.boundingBox())!
+    return { pill, x: box.x + box.width / 2, y: box.y + box.height / 2, top: box.y }
+  }
+
+  const tooltipCount = (page: TestPage) => page.locator("[data-slot=tooltip-content]").count()
+
+  /**
+   * Opens a finger that a test can hold down. Playwright can only tap, so
+   * this sends raw touch events. One session keeps the touch state between
+   * the events.
+   */
+  async function openFinger(opened: Awaited<ReturnType<typeof openPage>>) {
+    const session = await opened.context.newCDPSession(opened.page)
+    const send = (type: "touchStart" | "touchMove" | "touchEnd", points: { x: number; y: number }[]) =>
+      session.send("Input.dispatchTouchEvent", { type, touchPoints: points })
+    return {
+      down: (x: number, y: number) => send("touchStart", [{ x, y }]),
+      move: (x: number, y: number) => send("touchMove", [{ x, y }]),
+      up: () => send("touchEnd", []),
+    }
+  }
+
+  test("a tap toggles the pill and opens no tooltip", async () => {
+    // Radix opens a tooltip on focus, and a tap focuses the pill after the
+    // finger lifts. The tooltip then covered the pill after every tap.
+    const phone = await openPage(PHONE)
+    const { pill, x, y } = await searchPill(phone.page)
+    // The click after the tap closes the tooltip again within a few
+    // milliseconds, so a check later would miss it. Watch for any insertion.
+    await phone.page.evaluate(() => {
+      const w = window as unknown as { tooltipsSeen: number }
+      w.tooltipsSeen = 0
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (node instanceof Element && node.querySelector("[data-slot=tooltip-content]")) w.tooltipsSeen++
+            if (node instanceof Element && node.matches("[data-slot=tooltip-content]")) w.tooltipsSeen++
+          }
+        }
+      }).observe(document.body, { childList: true, subtree: true })
+    })
+    await phone.page.touchscreen.tap(x, y)
+    await phone.page.waitForTimeout(700)
+    expect(await phone.page.evaluate(() => (window as unknown as { tooltipsSeen: number }).tooltipsSeen)).toBe(0)
+    expect(await pill.getAttribute("aria-pressed")).toBe("true")
+    await phone.close()
+  })
+
+  test("a long press opens the tooltip above the finger and does not toggle", async () => {
+    const phone = await openPage(PHONE)
+    const { pill, x, y, top } = await searchPill(phone.page)
+    const finger = await openFinger(phone)
+    await finger.down(x, y)
+    await phone.page.waitForTimeout(300)
+    expect(await tooltipCount(phone.page)).toBe(0)
+    await phone.page.waitForTimeout(400)
+    expect(await tooltipCount(phone.page)).toBe(1)
+    const tooltipBottom = await phone.page.evaluate(
+      () => document.querySelector("[data-slot=tooltip-content]")!.getBoundingClientRect().bottom
+    )
+    expect(tooltipBottom).toBeLessThanOrEqual(top)
+
+    await finger.up()
+    await phone.page.waitForTimeout(300)
+    expect(await tooltipCount(phone.page)).toBe(1)
+    expect(await pill.getAttribute("aria-pressed")).toBe("false")
+    await phone.page.waitForTimeout(1600)
+    expect(await tooltipCount(phone.page)).toBe(0)
+    await phone.close()
+  })
+
+  test("a swipe that starts on a pill opens no tooltip", async () => {
+    const phone = await openPage(PHONE)
+    const { x, y } = await searchPill(phone.page)
+    const finger = await openFinger(phone)
+    await finger.down(x, y)
+    await finger.move(x + 30, y)
+    await phone.page.waitForTimeout(700)
+    expect(await tooltipCount(phone.page)).toBe(0)
+    await finger.up()
+    await phone.close()
+  })
+
+  test("a mouse that hovers on a phone gets the tooltip at once", async () => {
+    const phone = await openPage(PHONE)
+    const { x, y } = await searchPill(phone.page)
+    await phone.page.mouse.move(x, y)
+    await phone.page.waitForTimeout(100)
+    expect(await tooltipCount(phone.page)).toBe(1)
+    await phone.close()
+  })
+
+  test("a pen that leaves the screen closes the tooltip", async () => {
+    // Chromium on Android drops the hover exit of a pen, so the page gets no
+    // leave event. A hovering pen moves about every 16ms, so silence means
+    // the pen has left. The tooltip stayed on screen before this rule.
+    const phone = await openPage(PHONE)
+    const { x, y } = await searchPill(phone.page)
+    const session = await phone.context.newCDPSession(phone.page)
+    const hover = (dx: number) =>
+      session.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: x + dx, y, pointerType: "pen" })
+    for (let i = 0; i < 12; i++) {
+      await hover(i % 2)
+      await phone.page.waitForTimeout(50)
+    }
+    expect(await tooltipCount(phone.page)).toBe(1)
+    await phone.page.waitForTimeout(600)
+    expect(await tooltipCount(phone.page)).toBe(0)
+    // The pen comes back to the same pill.
+    await hover(0)
+    await phone.page.waitForTimeout(100)
+    expect(await tooltipCount(phone.page)).toBe(1)
+    await phone.close()
+  })
+
+  test("a pen tip opens nothing at the press, and a long press opens the tooltip", async () => {
+    // On a phone the pen tip opened the tooltip at the instant of the press.
+    // The tip is a touch on the glass, so it follows the finger rules.
+    const phone = await openPage(PHONE)
+    const { pill, x, y } = await searchPill(phone.page)
+    const session = await phone.context.newCDPSession(phone.page)
+    const pen = (type: "mousePressed" | "mouseReleased") =>
+      session.send("Input.dispatchMouseEvent", { type, x, y, button: "left", buttons: type === "mousePressed" ? 1 : 0, clickCount: 1, pointerType: "pen" })
+
+    await pen("mousePressed")
+    await phone.page.waitForTimeout(250)
+    expect(await tooltipCount(phone.page)).toBe(0)
+    await phone.page.waitForTimeout(450)
+    expect(await tooltipCount(phone.page)).toBe(1)
+    await pen("mouseReleased")
+    await phone.page.waitForTimeout(200)
+    expect(await pill.getAttribute("aria-pressed")).toBe("false")
+    await phone.close()
+  })
+
+  test("a sweep across the pills never shows two tooltips", async () => {
+    // On close the enter animation started again, so Radix kept the old
+    // tooltip in the page beside the new one for 125ms. The sweep crosses
+    // three pills, because the fault needs a tooltip that opened at once.
+    const desktop = await openPage({ width: 1280, height: 800 })
+    const pills = desktop.page.locator("#feature-picker button")
+    const [a, c] = [(await pills.nth(0).boundingBox())!, (await pills.nth(2).boundingBox())!]
+    const y = a.y + a.height / 2
+    await desktop.page.mouse.move(a.x + a.width / 2, y)
+    await desktop.page.waitForTimeout(500)
+    const counts: number[] = []
+    for (let x = a.x + a.width / 2; x <= c.x + c.width / 2; x += 2) {
+      await desktop.page.mouse.move(x, y)
+      counts.push(await tooltipCount(desktop.page))
+    }
+    expect(counts.filter((n) => n > 1)).toEqual([])
+    await desktop.close()
+  })
+
+  test("a mouse on a desktop still waits before the tooltip opens", async () => {
+    const desktop = await openPage({ width: 1280, height: 800 })
+    const { x, y } = await searchPill(desktop.page)
+    await desktop.page.mouse.move(x, y)
+    await desktop.page.waitForTimeout(100)
+    expect(await tooltipCount(desktop.page)).toBe(0)
+    await desktop.page.waitForTimeout(500)
+    expect(await tooltipCount(desktop.page)).toBe(1)
+    await desktop.close()
+  })
+
+  test("the keyboard opens the tooltip, also after a tap", async () => {
+    const phone = await openPage(PHONE)
+    const { pill, x, y } = await searchPill(phone.page)
+    await phone.page.touchscreen.tap(x, y)
+    await phone.page.touchscreen.tap(5, 300)
+    await pill.focus()
+    await phone.page.waitForTimeout(100)
+    expect(await tooltipCount(phone.page)).toBe(1)
+    await phone.close()
+  })
+
+  test("only a touch screen shows the hint about the long press", async () => {
+    const hidden = async (opened: Awaited<ReturnType<typeof openPage>>) =>
+      opened.page.evaluate(() => getComputedStyle(document.getElementById("feature-hint")!).display === "none")
+    const phone = await openPage(PHONE)
+    expect(await hidden(phone)).toBe(false)
+    await phone.close()
+    const desktop = await openPage({ width: 1280, height: 800 })
+    expect(await hidden(desktop)).toBe(true)
+    await desktop.close()
+  })
+})
+
+describe("text selection", () => {
+  test("no text outside the two fields can be selected", async () => {
+    // A long press on a label or a count opened the cut and copy bar on a
+    // phone. Only the fields hold content that a person may select.
+    const phone = await openPage({ touch: true, width: 390, height: 844 })
+    await fillPrompt(phone.page)
+    const selectable = await phone.page.evaluate(() => {
+      const found: string[] = []
+      const walker = document.createTreeWalker(document.getElementById("app")!, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const element = node.parentElement!
+        if (!node.textContent?.trim() || element.closest("textarea, #url-full")) continue
+        if (getComputedStyle(element).userSelect !== "none") found.push(node.textContent.trim())
+      }
+      return found
+    })
+    expect(selectable).toEqual([])
+    const fields = await phone.page.evaluate(() =>
+      ["prompt-input", "generated-url", "url-full"].map((id) => getComputedStyle(document.getElementById(id)!).userSelect)
+    )
+    expect(fields).toEqual(["text", "text", "text"])
+    await phone.close()
+  })
+})
+
+describe("the home screen icons", () => {
+  test("the page and the manifest point at files that exist", async () => {
+    const opened = await openPage()
+    const links = await opened.page.evaluate(async () => {
+      const touchIcon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')
+      const manifestUrl = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.href
+      const manifest = manifestUrl ? await (await fetch(manifestUrl)).json() : { icons: [] }
+      const urls = [touchIcon?.href, ...manifest.icons.map((icon: { src: string }) => new URL(icon.src, manifestUrl).href)]
+      const checks = await Promise.all(
+        urls.map(async (url) => {
+          const response = await fetch(url as string)
+          return { ok: response.ok, type: response.headers.get("content-type") }
+        })
+      )
+      return { icons: manifest.icons as { sizes: string; purpose: string; type: string }[], checks, hasTouchIcon: !!touchIcon }
+    })
+    expect(links.hasTouchIcon).toBe(true)
+    expect(links.checks.every((check) => check.ok)).toBe(true)
+    // Android asks for a 192 and a 512 icon, and a separate maskable one.
+    const has = (sizes: string, purpose: string) =>
+      links.icons.some((icon) => icon.sizes === sizes && icon.purpose === purpose && icon.type === "image/png")
+    expect(has("192x192", "any")).toBe(true)
+    expect(has("512x512", "any")).toBe(true)
+    expect(has("512x512", "maskable")).toBe(true)
     await opened.close()
   })
 })

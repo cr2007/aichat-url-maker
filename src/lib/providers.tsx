@@ -8,9 +8,12 @@ import {
   PenTool,
 } from "lucide-react"
 
+/** The id of a provider. It is also the value of the provider control. */
 export type ProviderId = "chatgpt" | "claude" | "perplexity"
+/** A feature value for the `hints` parameter. An empty string means no feature. */
 export type Feature = "search" | "image" | "think" | "research" | "shopping" | "study" | "canvas" | ""
 
+/** One feature that a provider can switch on. */
 export interface FeatureOption {
   /** The visible text, and the accessible name. */
   label: string
@@ -22,15 +25,25 @@ export interface FeatureOption {
   description: string
 }
 
+/** Everything the app knows about one provider. */
 export interface ProviderConfig {
+  /** The id of the provider. */
   id: ProviderId
+  /** The name that the page shows. */
   name: string
+  /** The mark of the provider. It is decorative. */
   icon?: React.ReactNode
+  /** The address that the oversized prompt fallback opens. */
   baseURL: string
+  /** True if the provider reads a feature. */
   supportsFeatures: boolean
+  /** True if the provider has a chat that leaves no history. */
   supportsTemporaryChat: boolean
+  /** A mark for the temporary chat row, if the provider has its own. */
   temporaryChatIcon?: React.ReactNode
+  /** The features of the provider. The list is empty if there are none. */
   features: FeatureOption[]
+  /** Builds the URL. Every value goes through `URLSearchParams`. */
   buildURL: (prompt: string, feature: Feature, temporaryChat: boolean) => string
 }
 
@@ -147,6 +160,7 @@ const CHATGPT_FEATURES: FeatureOption[] = [
   },
 ]
 
+/** Every provider, in the order of the provider control. */
 export const PROVIDERS: ProviderConfig[] = [
   {
     id: "chatgpt",
