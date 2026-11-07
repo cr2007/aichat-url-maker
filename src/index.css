@@ -97,29 +97,29 @@
   color-scheme: light dark;
   --radius: 0.5rem;
   --bg-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, oklch(0.88 0.06 264 / 0.45) 0%, transparent 100%);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --background: oklch(0.995 0.005 264);
+  --foreground: oklch(0.145 0.005 264);
+  --card: oklch(0.995 0.005 264);
+  --card-foreground: oklch(0.145 0.005 264);
+  --popover: oklch(0.995 0.005 264);
+  --popover-foreground: oklch(0.145 0.005 264);
   --primary: oklch(0.53 0.18 264);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.42 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.99 0.005 264);
+  --secondary: oklch(0.97 0.005 264);
+  --secondary-foreground: oklch(0.205 0.005 264);
+  --muted: oklch(0.97 0.005 264);
+  --muted-foreground: oklch(0.42 0.005 264);
+  --accent: oklch(0.97 0.005 264);
+  --accent-foreground: oklch(0.205 0.005 264);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.80 0 0);
+  --border: oklch(0.80 0.005 264);
   /* The edge of a text field: 3:1 on the page (WCAG 1.4.11). */
   --input: oklch(0.64 0.005 264);
   --ring: oklch(0.53 0.18 264);
   /* The focus indicator. It must not be the accent color. A blue ring on the
      blue primary button is not visible. This value contrasts with every
      surface in the app, including the filled buttons. */
-  --focus-ring: oklch(0.145 0 0);
+  --focus-ring: oklch(0.145 0.005 264);
   /* The oversized-prompt warning. The old `text-amber-600` measured 3.06:1 on
      the page background, below the 4.5:1 that WCAG AA needs for this size.
      A warning is not an error, so it does not use --destructive. */
@@ -129,7 +129,7 @@
      track. HIG: base colors are dimmer and elevated colors are brighter.
      Do not use --background here. That value inverts the effect. */
   --segment-track: oklch(0.49 0.03 264 / 0.09);
-  --segment-thumb: oklch(1 0 0);
+  --segment-thumb: oklch(0.995 0.005 264);
   /* Liquid Glass. These values apply to the indicator during a press only.
      HIG materials.md > Liquid Glass keeps glass out of the content layer.
      There is one exception: "controls in the content layer with a transient
@@ -154,29 +154,29 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-      --background: oklch(0.145 0 0);
+      --background: oklch(0.145 0.005 264);
       --bg-gradient: radial-gradient(ellipse 100% 45% at 50% 0%, oklch(0.22 0.07 264 / 0.5) 0%, transparent 100%);
-      --foreground: oklch(0.985 0 0);
-      --card: oklch(0.205 0 0);
-      --card-foreground: oklch(0.985 0 0);
-      --popover: oklch(0.205 0 0);
-      --popover-foreground: oklch(0.985 0 0);
+      --foreground: oklch(0.985 0.005 264);
+      --card: oklch(0.205 0.005 264);
+      --card-foreground: oklch(0.985 0.005 264);
+      --popover: oklch(0.205 0.005 264);
+      --popover-foreground: oklch(0.985 0.005 264);
       --primary: oklch(0.67 0.15 264);
-      --primary-foreground: oklch(0.10 0 0);
-      --secondary: oklch(0.269 0 0);
-      --secondary-foreground: oklch(0.985 0 0);
-      --muted: oklch(0.269 0 0);
-      --muted-foreground: oklch(0.708 0 0);
-      --accent: oklch(0.269 0 0);
-      --accent-foreground: oklch(0.985 0 0);
+      --primary-foreground: oklch(0.10 0.005 264);
+      --secondary: oklch(0.269 0.005 264);
+      --secondary-foreground: oklch(0.985 0.005 264);
+      --muted: oklch(0.269 0.005 264);
+      --muted-foreground: oklch(0.708 0.005 264);
+      --accent: oklch(0.269 0.005 264);
+      --accent-foreground: oklch(0.985 0.005 264);
       --destructive: oklch(0.704 0.191 22.216);
       --border: oklch(1 0 0 / 10%);
       --input: oklch(0.50 0.005 264);
       --ring: oklch(0.67 0.15 264);
-      --focus-ring: oklch(0.985 0 0);
+      --focus-ring: oklch(0.985 0.005 264);
       --warning: oklch(0.692 0.14 70);
       --segment-track: oklch(1 0 0 / 0.06);
-      --segment-thumb: oklch(0.32 0 0);
+      --segment-thumb: oklch(0.32 0.005 264);
       --segment-thumb-glass: oklch(0.62 0.15 264 / 0.6);
       --segment-thumb-specular: oklch(1 0 0 / 0.34);
       --segment-thumb-underglow: oklch(0.67 0.15 264 / 0.4);
