@@ -354,14 +354,8 @@ describe("motion that a person meets often", () => {
         return null
       }
       for (const sheet of document.styleSheets) {
-        // The font stylesheet comes from another origin, and the browser
-        // refuses to show its rules.
-        try {
-          const found = find(sheet.cssRules)
-          if (found) return found
-        } catch {
-          continue
-        }
+        const found = find(sheet.cssRules)
+        if (found) return found
       }
       return null
     })

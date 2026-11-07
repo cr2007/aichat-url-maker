@@ -18,7 +18,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,svg}'],
+        // woff2: the self-hosted font, so the installed app keeps it offline.
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
       },
       manifest: {
         name: 'AI Prompt URL Generator',
