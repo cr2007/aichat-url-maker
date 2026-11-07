@@ -27,6 +27,13 @@ const UNSPACED_SCRIPT =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u
 
 /**
+ * The segmenters, made once. A new segmenter for each group of words took
+ * about 1.4 seconds a key after a paste of 100,000 mixed characters.
+ */
+const GRAPHEME_SEGMENTER = new Intl.Segmenter()
+const WORD_SEGMENTER = new Intl.Segmenter(undefined, { granularity: "word" })
+
+/**
  * Counts the characters that a person sees.
  *
  * A family emoji or a flag is one character on the screen, but it is several
@@ -43,7 +50,7 @@ const UNSPACED_SCRIPT =
  */
 export function countCharacters(text: string): number {
   // Step 1.1: take the text apart at the edges that a person sees.
-  return Array.from(new Intl.Segmenter().segment(text)).length
+  return Array.from(GRAPHEME_SEGMENTER.segment(text)).length
 }
 
 /**
@@ -77,7 +84,7 @@ export function countWords(text: string): number {
 
     // Step 1.3: a group in an unspaced script holds many words. Count the
     // pieces that the dictionary marks as words, not the punctuation.
-    for (const part of new Intl.Segmenter(undefined, { granularity: "word" }).segment(group)) {
+    for (const part of WORD_SEGMENTER.segment(group)) {
       if (part.isWordLike) count++
     }
   }
