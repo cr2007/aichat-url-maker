@@ -470,7 +470,7 @@ function PageContent() {
               dir="auto"
               aria-labelledby="prompt-label"
               aria-describedby={hasPrompt ? "prompt-meta" : undefined}
-              className="w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-muted-foreground border border-border focus-ring focus:border-primary resize-y"
+              className="w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-muted-foreground border border-input focus-ring focus:border-primary resize-y"
               rows={4}
             />
             <PromptMeta text={deferredPrompt} tooLong={deferredTooLong} />

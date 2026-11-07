@@ -231,3 +231,34 @@ describe("hover on the open button", () => {
     })
   }
 })
+
+describe("the edge of the prompt field", () => {
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`is 3:1 against the page, ${colorScheme}`, async () => {
+      // WCAG 1.4.11. The border used the pill token and measured 1.86:1.
+      const opened = await openPage({ colorScheme })
+      const ratio = await opened.page.evaluate(() => {
+        // A canvas paints each colour over the page, as the browser does, and
+        // returns the sRGB pixel. A translucent border then reads correctly.
+        const context = document.createElement("canvas").getContext("2d")!
+        const pageColour = getComputedStyle(document.body).backgroundColor
+        const pixel = (colour: string) => {
+          for (const layer of [pageColour, colour]) {
+            context.fillStyle = layer
+            context.fillRect(0, 0, 1, 1)
+          }
+          return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+        }
+        const luminance = (rgb: number[]) => {
+          const [r, g, b] = rgb.map((v) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4))
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b
+        }
+        const edge = luminance(pixel(getComputedStyle(document.getElementById("prompt-input")!).borderTopColor))
+        const page = luminance(pixel(pageColour))
+        return (Math.max(edge, page) + 0.05) / (Math.min(edge, page) + 0.05)
+      })
+      expect(ratio).toBeGreaterThanOrEqual(3)
+      await opened.close()
+    })
+  }
+})
