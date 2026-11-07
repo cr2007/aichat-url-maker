@@ -668,22 +668,6 @@ describe("the home screen icons", () => {
 })
 
 describe("plain use for every reader", () => {
-  test("a screen reader hears each feature description once, and a short row name", async () => {
-    // Each description was in the reading order and was also the description
-    // of its pill, so a line-by-line reader heard it twice. The temporary chat
-    // row had its whole description in its name.
-    const opened = await openPage()
-    const tree = await opened.page.locator("main").ariaSnapshot()
-    expect(tree).not.toContain("text: Makes a picture from the prompt.")
-    expect(tree).toContain('button "Temporary chat"')
-    const description = await opened.page.evaluate(() => {
-      const id = document.querySelector("#feature-picker button")!.getAttribute("aria-describedby")!
-      return document.getElementById(id)?.textContent
-    })
-    expect(description).toBeTruthy()
-    await opened.close()
-  })
-
   test("every label, counter and description is a single stop for a screen reader", async () => {
     // TalkBack on a real phone read the temporary chat name and description
     // twice, the field labels twice, and the counter twice. A probe page on
@@ -691,7 +675,7 @@ describe("plain use for every reader", () => {
     const phone = await openPage({ touch: true, width: 412, height: 740 })
     await fillPrompt(phone.page)
     const tree = await phone.page.locator("main").ariaSnapshot()
-    for (const stray of ["text: AI app", "text: Prompt", "text: Features (optional)", "characters", "text: Keeps this chat", "Press and hold"]) {
+    for (const stray of ["text: AI app", "text: Prompt", "text: Features (optional)", "characters", "text: Keeps this chat", "Press and hold", "text: Makes a picture from the prompt."]) {
       expect(tree).not.toContain(stray)
     }
     // An empty role="status" was a stop too: TalkBack said "status".
@@ -704,6 +688,13 @@ describe("plain use for every reader", () => {
       return document.getElementById(row.getAttribute("aria-describedby")!)?.textContent
     })
     expect(description).toContain("Keeps this chat out of your")
+    // Each pill still has its description, read once with the pill.
+    const pillDescription = await phone.page.evaluate(() => {
+      const id = document.querySelector("#feature-picker button")!.getAttribute("aria-describedby")!
+      return document.getElementById(id)?.textContent
+    })
+    expect(pillDescription).toBeTruthy()
+    expect(tree).toContain('button "Temporary chat"')
     await phone.close()
   })
 
