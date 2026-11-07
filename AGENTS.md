@@ -112,12 +112,12 @@ src/
 ├─ assets/fonts/               # Instrument Sans, self-hosted: latin and latin-ext woff2
 ├─ components/
 │  ├─ copyable-input.tsx       # CopyButton, and the read-only URL field that uses it
+│  ├─ provider-icons.tsx       # The brand marks of the AI apps
 │  ├─ link-preview.tsx         # The link box in the phone dock: one line that grows in place
 │  └─ ui/                      # shadcn-style Radix wrappers
 │     ├─ button.tsx
 │     ├─ segmented-control.tsx # Provider picker: one track, sliding indicator
-│     ├─ toggle.tsx            # Feature pills and the temporary chat row
-│     ├─ toggle-group.tsx
+│     ├─ toggle.tsx            # Toggle, ToggleGroup and ToggleGroupItem
 │     └─ tooltip.tsx           # Feature descriptions on hover and focus
 └─ lib/
    ├─ console-banner.ts        # The greeting that the browser console shows
@@ -231,8 +231,8 @@ Three workflows live in `.github/workflows/`:
 
 | File | Trigger | What it does |
 |------|---------|--------------|
-| `test.yml` | push to `main`, all PRs | Two jobs: `unit` runs the unit tests, `browser` builds and runs the browser tests in Chromium |
-| `deploy.yml` | push to `main`, manual | Builds and deploys to GitHub Pages |
+| `test.yml` | push to `main`, all PRs | `unit` runs lint and the unit tests, `browser` runs the browser tests, and on `main` `deploy` publishes to Pages only after both pass |
+| `deploy.yml` | manual | Deploys to GitHub Pages by hand |
 | `assign-issue.yml` | issue comment | Handles `.take` / `.release` / `.assign` / `.unassign` commands |
 
 `deploy.yml` and `assign-issue.yml` delegate to reusable actions in `cr2007/actions@v1`. When updating CI, check that repository first before writing inline steps.
@@ -243,16 +243,9 @@ Three workflows live in `.github/workflows/`:
 
 ### Linting
 
-`bun run lint` exits non-zero today. It reports 5
-`react-refresh/only-export-components` errors, and they are not new breakage:
-
-- `src/components/ui/toggle.tsx` exports `toggleVariants` beside the
-  component. `toggle-group.tsx` imports it, so do not delete it.
-- `src/lib/providers.tsx` exports four icon components beside the data.
-
-Compare the count, not the exit code. A 6th error means the change added one.
-Clearing these needs file splits, not deletions: move `toggleVariants` into
-its own module and the icons out of `providers.tsx`.
+`bun run lint` passes, and CI runs it before the unit tests. The brand icons
+live in `src/components/provider-icons.tsx` and the toggles in one
+`toggle.tsx`, so no file mixes components with other exports.
 
 Hallmark checks the design. Run it with Bun:
 
