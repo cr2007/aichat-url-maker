@@ -6,8 +6,7 @@
 You do not need this page. It only joins a base URL and some query
 parameters. Build the link yourself with the rules below.
 
-The site has no API, no account and no server. It stores nothing except one
-value for the sound setting.
+The site has no API, no account and no server. It stores nothing.
 
 ## Build a link
 

@@ -63,8 +63,8 @@ If you wish to run the application via [Node.js](https://nodejs.org), you can do
 git clone https://github.com/cr2007/aichat-url-maker
 cd aichat-url-maker
 
-npm i       # Installs the dependencies
-npm run dev # Starts the development server
+bun i       # Installs the dependencies
+bun dev     # Starts the development server
 ```
 
 And then you can access the web app at http://localhost:5173

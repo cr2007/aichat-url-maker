@@ -108,9 +108,11 @@ src/
 ├─ App.tsx                     # Main UI, form state, and URL generation wiring
 ├─ main.tsx                    # React entry point. Hydrates the prerendered markup
 ├─ sw.ts                       # Workbox service worker (vite-plugin-pwa, injectManifest)
+├─ dev/font-lab.tsx            # TEMPORARY. Font compare screen at /?fonts on the dev server. Delete it after the font choice
 ├─ index.css                   # Tailwind setup, design tokens, appearance, reduced motion
 ├─ components/
-│  ├─ copyable-input.tsx       # Read-only textarea with copy UX
+│  ├─ copyable-input.tsx       # CopyButton, and the read-only URL field that uses it
+│  ├─ link-preview.tsx         # The link line in the phone dock, which grows into a panel
 │  └─ ui/                      # shadcn-style Radix wrappers
 │     ├─ button.tsx
 │     ├─ segmented-control.tsx # Provider picker: one track, sliding indicator
@@ -121,7 +123,7 @@ src/
    ├─ console-banner.ts        # The greeting that the browser console shows
    ├─ providers.tsx            # Provider configs, URL builders, oversized-URL fallback
    ├─ segmented-control.ts     # Pure indicator geometry for the segmented control
-   └─ utils.ts                 # cn() helper, countWords(), copyText()
+   └─ utils.ts                 # cn() helper, countCharacters(), countWords(), copyText()
 ```
 
 There is no theme provider or appearance toggle. See **Appearance** below.
@@ -174,7 +176,7 @@ tests/
 |------|--------|
 | `tests/unit/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic |
 | `tests/unit/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
-| `tests/unit/utils.test.ts` | `countWords` whitespace handling, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
+| `tests/unit/utils.test.ts` | `countWords` whitespace handling and scripts without spaces, `countCharacters` for emoji, flags and skin tones, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
 | `tests/unit/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget. Also `resolveAssetPath`, which takes the deploy base off a stylesheet URL |
 | `tests/unit/console-banner.test.ts` | The console art: one style for each `%c`, the row count, rows of equal width, no row wider than 80 columns, the ink and the paper, no emoji or em dash, no sentence, no `url()`, and a console that throws |
 
@@ -189,9 +191,9 @@ attributes, the layout at each width, the contrast and the drag gesture.
 
 | File | Covers |
 |------|--------|
-| `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, and reduced motion |
-| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text and `aria-describedby`, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing |
+| `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, and the selected states in forced colors |
+| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing |
 
 Rules for a browser test:
 
@@ -202,6 +204,11 @@ Rules for a browser test:
 - Each test opens its own context, so no test sees the storage of another.
 - `openPage` collects every console error. A test can then assert that a flow
   reported none.
+- Keep `--timeout 30000` on `test:browser`. A browser test needs more than the
+  5 second default of `bun test`. When one test passes that default, it takes
+  the shared browser down with it, and every test after it fails with
+  `Target page, context or browser has been closed`. The real fault then hides
+  behind nine misleading failures.
 
 ---
 
@@ -230,6 +237,19 @@ Three workflows live in `.github/workflows/`:
 ---
 
 ## Coding Conventions (Important)
+
+### Linting
+
+`bun run lint` exits non-zero today. It reports 5
+`react-refresh/only-export-components` errors, and they are not new breakage:
+
+- `src/components/ui/toggle.tsx` exports `toggleVariants` beside the
+  component. `toggle-group.tsx` imports it, so do not delete it.
+- `src/lib/providers.tsx` exports four icon components beside the data.
+
+Compare the count, not the exit code. A 6th error means the change added one.
+Clearing these needs file splits, not deletions: move `toggleVariants` into
+its own module and the icons out of `providers.tsx`.
 
 ### TypeScript
 - Strict mode is enabled.
@@ -293,7 +313,7 @@ The indicator gets a Liquid Glass surface during a press only. See `.segment-ind
 More rules for the glass:
 
 - Keep `--segment-track` translucent. The page gradient is then behind the glass, and `backdrop-filter` has an image to blur. A solid track gives no glass effect.
-- The primary color tints the glass during the drag only. At rest the indicator is neutral. HIG color.md keeps a tinted background on one control, and the "Open in" button is that control.
+- The primary color tints the glass during the drag only: a deep indigo, hue 264, the hue of `--primary`. At rest the indicator is neutral. HIG color.md keeps a tinted background on one control, and the "Open in" button is that control.
 - Do not put a text color utility on a segment. Tailwind utilities rank above the components layer, so a utility stops the drag rules. The `.segment-item` rules in `index.css` own the label color.
 
 `src/lib/segmented-control.ts` holds the position maths as pure functions, so the tests can use them. `TRACK_PADDING_REM` must agree with the `p-1` class on the track.
@@ -314,7 +334,8 @@ like a toggle, not a switch.
   pill, and `TooltipTrigger asChild` writes its own `data-state` over the
   toggle's. The temporary chat row has no tooltip, so it reads `data-state`.
 
-The pills use flex wrap with `justify-center`, not a grid. A grid keeps its
+The pills use flex wrap with `justify-center` (`justify-start` from 1024px,
+where the label above is left aligned), not a grid. A grid keeps its
 columns, so a part-filled last row stays on the left. Flex centres every row.
 
 ### Motion
@@ -322,10 +343,19 @@ columns, so a part-filled last row stays on the left. Flex centres every row.
 - Name `scale` in a transition, not only `transform`. Tailwind v4 compiles
   `scale-*` to the independent `scale` property, and a transform transition
   does not cover it. The `transition-transform` shorthand does cover it.
-- An element enters from `scale-75` or higher with opacity. Nothing appears
-  out of nothing.
+- An element enters from `scale-90` or higher with opacity. Nothing appears
+  out of nothing. Never start from `scale-0`.
+- A press scales a control to 0.97, in every control. Use one value.
 - Use `ease-out` for an element that enters. Keep a UI transition at or below
-  300ms.
+  300ms. `--ease-out` in `index.css` is a strong curve, so every `ease-out`
+  utility uses it. Write `var(--ease-out)` in plain CSS, not the keyword.
+- A keyboard action has no motion. An arrow key selects a provider with no
+  slide. A click still slides the indicator.
+- A tooltip that opens inside the skip delay has no animation. Radix marks it
+  `data-state="instant-open"`.
+- A hover shadow changes at once. Do not put `box-shadow` in a transition list.
+- A control that a person meets many times a day has no entrance animation. The
+  URL field and the open button have none.
 
 ### Element IDs
 
@@ -376,6 +406,73 @@ grammar in tables instead.
   when the stylesheet loads and keeps the palette when it does not.
 - `public/llms.txt` holds the same grammar for an agent. Change both together.
 
+### Layout
+
+The page is one column on a phone and two columns from 1024px: the inputs on the
+left, the result on the right.
+
+- `#inputs-column` and `#result-column` use `contents` below 1024px, so their
+  children join the one column. The column uses `flex gap-5`, not `space-y`,
+  because `space-y` does not reach through `display: contents`.
+- The dock with the open button sticks to the bottom edge on a phone. It must
+  be a child of a tall box. A sticky element cannot leave its parent, so do not move it into a
+  short wrapper. From 1024px the result column is sticky and the button is static.
+- The page must not move when the state changes. The URL field, the link line
+  in the dock and the counter line are always in the page and hold their size. The open button is disabled
+  when there is no prompt. A test measures this.
+- A control that a provider does not support folds away with `Collapse` in
+  `App.tsx`, over 200ms. The content stays mounted and has `inert`. The row
+  keeps the text of the last provider while it folds.
+- A control that can take text size must reflow. The provider control reads its
+  own width in `rem`, so it stacks when the text grows. A label breaks inside a
+  word before it overflows.
+
+### Mobile
+
+- `html` has `-webkit-tap-highlight-color: transparent`. Every control has its
+  own press scale, so the grey flash on a tap adds nothing.
+- The prompt field is 16px on a coarse pointer, so iOS does not zoom on focus.
+  Never use `maximum-scale` or `user-scalable=no`.
+- `main` uses `min-h-dvh`, not `min-h-screen`. The browser bars change the
+  height of `100vh`.
+- `index.css` makes everything in `main` not selectable, so a long press on a
+  label, a count or a control does not open the cut and copy bar. The two
+  `textarea` fields are the content and stay selectable. They have an explicit
+  rule, because iOS can make a field read-only inside a parent with no
+  selection. A control also gets no callout and no double tap zoom delay.
+- The viewport has `interactive-widget=resizes-content`, so the Android
+  keyboard shrinks the layout and the pinned button rises with it. iOS does not
+  shrink the layout. Check the keyboard on a real phone.
+- The viewport has no `viewport-fit=cover`. The browser keeps the page inside
+  the safe area. Do not add `viewport-fit=cover` without safe-area padding on
+  `main` and on the pinned bar.
+- A tap on a pill opens no tooltip. A press of 400ms does. See **Tooltips**.
+  A line under the pills tells a touch user about the long press. It shows
+  only on a coarse pointer. Do not put information in a tooltip alone.
+- On a phone the pinned dock (`#open-action-section`) holds the result: the
+  link on one line (`#url-preview-toggle`), its copy button, and the open
+  button. The URL field (`#generated-url-section`) shows from 1024px only.
+  The features are then on the first screen. A tap on the link line grows the
+  line into a panel with the full link (`#url-full-panel`), as the Feedback
+  button on emilkowal.ski does. A clip-path reveals the panel upward from the
+  line, so the dock keeps its size. The text in `#url-full` can be selected.
+  Focus moves into the panel and back, and Escape closes it. The row is
+  `LinkPreview` in `link-preview.tsx`. Both copy
+  buttons use `CopyButton` in `copyable-input.tsx`.
+- With large text the link line would make the dock too tall. `#app` is a
+  container, and below a column of 16rem the link line leaves the dock and the
+  URL field shows in the page again. Only large text makes the column that
+  narrow in `rem`.
+
+### Forced colors
+
+`@media (forced-colors: active)` in `index.css` is outside every layer. A
+Tailwind utility is in the utilities layer and would outrank it. The browser
+removes fills and shadows in this mode, so each selected control has a cue that
+survives: an outline on the indicator, a `Highlight` fill on a selected pill, and
+a border on the buttons. Add a cue here for a new control that shows a state by
+colour.
+
 ### Tooltips
 
 A feature pill has a tooltip that describes the feature. The text is in
@@ -383,6 +480,32 @@ A feature pill has a tooltip that describes the feature. The text is in
 
 - A tooltip repeats what `aria-describedby` gives a screen reader. Never put
   information in a tooltip alone.
+- The description of each pill is in an `sr-only` span that is always in the
+  page. The tooltip is in the page only while it is open, so a pill must not
+  point `aria-describedby` at it.
+- A tooltip fades in and leaves at once. It has no zoom, no slide and no exit.
+  The closed state has `animate-none`. Without it the enter animation starts
+  again on close, and Radix keeps the old tooltip in the page beside the new
+  one. The box fits its text: `text-pretty`, not `text-balance`, because a
+  balanced box keeps its full width and leaves space on the right.
+- Touch and a pen tip: a tap opens nothing. Radix opens a tooltip on focus,
+  and a tap focuses the pill after the finger lifts, so `Tooltip` in
+  `tooltip.tsx` controls the open state and drops an open that comes from a
+  press that is not a mouse button. A press of 400ms opens the tooltip above
+  the finger. The click after that press does nothing. The tooltip stays 1.5
+  seconds after the finger lifts. A swipe of more than 10px cancels the press.
+- A pen on a touch device: Chromium on Android drops the hover exit of a pen
+  (crbug.com/715114), so the page gets no leave event. A hovering pen sends a
+  move about every 16ms, even when held still. `Tooltip` opens on a pen hover
+  move and closes after 300ms with no move. Brave on Android (Chromium 156)
+  sends no pen hover at all. Chrome 158 does. Verified over adb on a real
+  Android phone.
+- Hover with a mouse or a pen: Radix opens the tooltip. A hover is a move with
+  no button down. When the main pointer is
+  coarse, `TooltipProvider` sets the delay to 0, so a mouse or an S Pen on a
+  phone gets the tooltip at once. A desktop waits 200ms.
+- Keyboard: focus opens the tooltip. `onBlur` resets the touch flag, so a tab
+  after a tap still works.
 - `TooltipTrigger asChild` writes `data-state` onto its child. Do not style a
   trigger from `data-state`.
 
@@ -458,8 +581,9 @@ characters, `resolveOpenAction` returns the provider's bare `baseURL` and
 `shouldCopyPrompt: true`; `App.tsx`'s `handleOpenInProvider` then copies the
 raw prompt to the clipboard and opens that URL instead of the full one. The
 UI reflects this up front: the button label changes to "Copy Prompt & Open
-{provider}", and a persistent (non-hover) message explains the fallback, so
-it's visible on touch devices too. This mirrors the approach used by
+{provider}", and a persistent (non-hover) message in the counter line explains
+the fallback, so it's visible on touch devices too. The message is one line
+and it is not in the pinned bar, which must stay small. This mirrors the approach used by
 `resend/react-email` (PR #3404) and avoids HTTP 431 errors from servers that
 cap request line length.
 
@@ -494,10 +618,15 @@ manually:
 |------|------|---------|
 | `public/og-image.png` | 1774 × 887 | `og:image` / `twitter:image` |
 | `public/favicon.svg` | any (32 × 32 viewBox) | SVG favicon + PWA icon (already committed) |
+| `public/apple-touch-icon.png` | 180 × 180 | iOS home screen icon. No rounded corners and no transparency: iOS rounds it and fills a transparent corner with black |
+| `public/icon-192.png`, `public/icon-512.png` | 192, 512 | Android and PWA icons, rounded, purpose `any` |
+| `public/icon-maskable-512.png` | 512 × 512 | Purpose `maskable`. No rounded corners. The mark stays inside the central 80 percent circle, so a launcher can cut any shape |
 
 If `og-image.png` is missing, the build will still succeed but social previews
-will degrade gracefully. The SVG favicon doubles as the PWA manifest icon via
-`sizes: "any"`, so no separate PNG icon files are required.
+will degrade gracefully. The PNG icons are drawn from the same mark as the
+favicon, the chat link: a flat chain link whose left half is a chat bubble,
+with a stroke of 1.5 in a 32 grid. If the mark changes, make all five files
+again.
 
 ---
 
