@@ -341,6 +341,11 @@ describe("the page does not move", () => {
       url: document.getElementById("generated-url")!.getBoundingClientRect(),
     }))
     expect(columns.url.left).toBeGreaterThanOrEqual(columns.prompt.right)
+    // The first control of each column starts on the same line.
+    const firsts = await wide.page.evaluate(() =>
+      ["provider-picker", "generated-url"].map((id) => Math.round(document.getElementById(id)!.getBoundingClientRect().top))
+    )
+    expect(firsts[0]).toBe(firsts[1])
     await wide.close()
   })
 })

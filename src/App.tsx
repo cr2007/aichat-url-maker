@@ -540,7 +540,7 @@ function PageContent() {
               field shows from 1024px. It also shows when the column is under
               16rem, which happens only with large text: the link line would
               then make the pinned dock too tall. */}
-          <div id="generated-url-section" className="hidden space-y-1.5 @max-[16rem]:block lg:block">
+          <div id="generated-url-section" className="hidden space-y-2 @max-[16rem]:block lg:block">
             <label
               id="generated-url-label"
               htmlFor="generated-url"
