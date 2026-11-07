@@ -194,7 +194,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 
 | File | Covers |
 |------|--------|
-| `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, the selected states in forced colors, and a hover on the open button that raises the contrast with no glow |
+| `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, the selected states in forced colors, a hover on the open button that raises the contrast with no glow, and a prompt field edge of 3:1 in both appearances |
 | `tests/browser/interaction.test.ts` | An opened tab with no `window.opener` and the blocked popup message, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
 | `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, no scrollbar in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
@@ -253,6 +253,18 @@ Three workflows live in `.github/workflows/`:
 Compare the count, not the exit code. A 6th error means the change added one.
 Clearing these needs file splits, not deletions: move `toggleVariants` into
 its own module and the icons out of `providers.tsx`.
+
+Hallmark checks the design. Run it with Bun:
+
+```sh
+bun .agents/skills/hallmark/scripts/sloplint.mjs src index.html --scope app
+```
+
+Add `--render --url http://localhost:5173/` for the render tier. It needs
+`puppeteer-core` (`HALLMARK_PUPPETEER`) and a browser that runs its sandbox
+(`CHROME_PATH`, for example Brave). Delete the `.hallmark/` folder it writes.
+One FAIL is known: 10a, the link box animates `height` on purpose. The
+waivers sit in the stamp at the top of `index.css`.
 
 ### TypeScript
 - Strict mode is enabled.
@@ -340,7 +352,8 @@ request to another origin. One variable woff2 file per subset holds the
 weights 400 to 700. `index.css` declares it with `font-display: swap`, and
 `index.html` preloads the latin file, so the text does not swap after the
 first paint. The service worker precaches the woff2 files for offline use.
-The `<noscript>` page names the same family.
+The `<noscript>` page names the same family. `--font-sans` holds the stack,
+so the `font-sans` class also gives Instrument Sans.
 
 ### Appearance
 
@@ -348,6 +361,9 @@ The appearance follows the system. The app has no light or dark control, no them
 
 - The Tailwind `dark` variant is `@custom-variant dark (@media (prefers-color-scheme: dark))`. There is no `.dark` class. Do not add a class-based control.
 - The dark values are in a `@media (prefers-color-scheme: dark) { :root { ... } }` block in `index.css`. Give each token in `:root` a value in that block.
+- Every neutral has a faint indigo tint (chroma 0.005, hue 264), so the greys belong to the accent. Keep new neutrals tinted the same way.
+- `--input` is the edge of a text field. It is 3:1 against the page in both appearances (WCAG 1.4.11). Pills use `--border`, which may be lighter.
+- Selection, the caret and the scrollbar take the palette. `html` and `body` have `overflow-x: clip`, not `hidden`, so the sticky dock still works.
 - `:root` sets `color-scheme: light dark`. The browser then draws the scrollbars and the form controls in the system appearance.
 - `index.html` has two `theme-color` tags, one for each appearance. Change both tags together.
 - In dark mode an elevated surface must be lighter than the surface below it. The ladder is `--segment-thumb` (0.32) above `--segment-track` (0.21) above `--background` (0.145). Do not use `--background` for an elevated surface. That value is correct in light mode only.
@@ -490,7 +506,9 @@ grammar in tables instead.
   there in any case, because it has to apply only when JavaScript is off.
 - Each colour reads an app token and falls back to the same value written
   out, for example `var(--foreground, var(--ns-fg))`. The page matches the app
-  when the stylesheet loads and keeps the palette when it does not.
+  when the stylesheet loads and keeps the palette when it does not. The
+  `--ns-*` values sit in `:root` blocks inside that style, so no colour
+  literal sits in a rule.
 - `public/llms.txt` holds the same grammar for an agent. Change both together.
 
 ### Layout
