@@ -107,7 +107,7 @@ tests/
 src/
 ├─ App.tsx                     # Main UI, form state, and URL generation wiring
 ├─ main.tsx                    # React entry point. Hydrates the prerendered markup
-├─ sw.ts                       # Workbox service worker (vite-plugin-pwa, injectManifest)
+├─ sw.ts                       # Workbox service worker (vite-plugin-pwa, injectManifest). skipWaiting, so a deploy reaches an open app at the next reload
 ├─ index.css                   # Tailwind setup, design tokens, the font, appearance, reduced motion
 ├─ assets/fonts/               # Instrument Sans, self-hosted: latin and latin-ext woff2
 ├─ components/
@@ -176,7 +176,7 @@ tests/
 
 | File | Covers |
 |------|--------|
-| `tests/unit/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback logic |
+| `tests/unit/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback, which drops only the prompt and keeps every setting |
 | `tests/unit/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
 | `tests/unit/prompt-ideas.test.ts` | `nextIdeaIndex` always picks a different idea in range, and every idea is unique, short and plain |
 | `tests/unit/utils.test.ts` | `countWords` whitespace handling and scripts without spaces, `countCharacters` for emoji, flags and skin tones and its ASCII fast path, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
@@ -194,9 +194,9 @@ attributes, the layout at each width, the contrast and the drag gesture.
 
 | File | Covers |
 |------|--------|
-| `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, and the selected states in forced colors |
-| `tests/browser/interaction.test.ts` | The pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
+| `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, the selected states in forced colors, and a hover on the open button that raises the contrast with no glow |
+| `tests/browser/interaction.test.ts` | An opened tab with no `window.opener` and the blocked popup message, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, no scrollbar in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
 
@@ -275,7 +275,7 @@ its own module and the icons out of `providers.tsx`.
 - An attribute selector outranks a plain utility class. `ToggleGroupItem` once carried `data-spacing="0"` at all times, which compiled to `[data-spacing="0"]{border-radius:0}` and squared five of the seven feature pills, because that selector beats `rounded-md`. The joined-group classes are gone. Do not bring them back: the pills wrap onto more than one row, and a joined bar cannot wrap.
 - Size text in `rem`, not `px`, so it follows the browser's font-size setting. Do not go below `0.8125rem` (13px) for any text.
 - Every motion must survive `prefers-reduced-motion`. `index.css` has a blanket floor in `@layer base`; prefer a local `motion-reduce:` variant where a component needs something more specific than "near-instant".
-- A hover shadow goes below the control, in the colour of that control. Do not use a symmetric shadow, and do not use a colour from a different part of the palette. Both make a halo.
+- Hover is one signal, and it raises contrast. The open button fill takes one step toward `--foreground` with `color-mix`: darker in light mode, lighter in dark mode. Do not add a glow or a second signal. A fill at 90 percent with a glow in the button colour was the old hover: the fade lowered the contrast in both appearances, and the glow looked generated.
 - Hover must not fade a control. A fade dims the label with the background, and the control then looks disabled.
 
 ### Focus
@@ -305,7 +305,9 @@ for an expert who makes ten links in a row.
 - An icon goes next to a label, never alone, unless the action is universal.
   The open button has a trailing arrow, because it opens a new tab.
 - Ctrl or Command with Enter in the prompt opens the link. A wide screen with
-  a mouse shows the shortcut in the open button.
+  a mouse shows the shortcut in the open button, one keycap per key. A held
+  key shows as pressed. The keycaps are `aria-hidden`: `aria-keyshortcuts` gives the shortcut to a
+  screen reader.
 - The prompt has `dir="auto"`, so Arabic and Hebrew run from the right.
 - The link and the counts use the prompt without spaces and new lines at the
   ends.
@@ -405,7 +407,8 @@ columns, so a part-filled last row stays on the left. Flex centres every row.
 - A press scales a control to 0.97, in every control. Use one value.
 - `--ease-out` is also `--default-transition-timing-function`, so a
   transition with no easing class does not use the slower Tailwind curve.
-  The app has one curve. Do not add a second `cubic-bezier`.
+  The app has one custom curve. Do not add a second `cubic-bezier`. The link
+  box close uses the Tailwind `ease-in-out` keyword, not a new curve.
 - Use `ease-out` for an element that enters. Keep a UI transition at or below
   300ms. `--ease-out` in `index.css` is a strong curve, so every `ease-out`
   utility uses it. Write `var(--ease-out)` in plain CSS, not the keyword.
@@ -413,7 +416,6 @@ columns, so a part-filled last row stays on the left. Flex centres every row.
   slide. A click still slides the indicator.
 - A tooltip that opens inside the skip delay has no animation. Radix marks it
   `data-state="instant-open"`.
-- A hover shadow changes at once. Do not put `box-shadow` in a transition list.
 - A control that a person meets many times a day has no entrance animation. The
   URL field and the open button have none.
 
@@ -563,9 +565,21 @@ left, the result on the right.
   second tap, Escape, or a tap outside closes it. The focus stays on the
   toggle. Copy and Share never move: they are pinned to the bottom right
   corner, and the closed text keeps clear of their measured width.
-- The motion must go unnoticed: open 250ms, close 200ms, `--ease-out`, one
-  element, no swap and no crossfade. A CSS transition turns around from where
-  it is, so a tap during the motion reverses it. A browser without
+- The motion must go unnoticed: 250ms each way, one element, no swap and
+  no crossfade. The open uses `--ease-out`. The close uses Tailwind's
+  `ease-in-out`, because `--ease-out` did most of the shrink in the first
+  80ms and read as rushed. The room for the buttons is `padding-bottom`, so
+  it is in the transition with the height. Without it the close dropped 44px
+  in the first frame. On close the text keeps the full width until the box
+  has shrunk: the padding for the buttons comes back after 250ms. With Share
+  the closed column is narrow, and on a real phone an early change made the
+  text jump into a tall column of five lines. The text hides its scrollbar: it is taller than the box
+  while the box grows, and a touch still scrolls a long link. On open the text settles out of a 2px
+  blur (`link-settle` in `index.css`), which hides the jump of the reflow. A
+  CSS transition turns around from where it is, so a tap during the motion
+  reverses it. A View Transitions morph was tried and dropped: it showed two
+  copies of the link at once, and a tap during it reached `<html>`, not the
+  box. A browser without
   `interpolate-size` opens the box at once. Frame strips at 10 percent speed
   (CDP `Animation.setPlaybackRate`) are the check. Every copy button is
   `CopyButton` in `copyable-input.tsx`.
@@ -693,8 +707,9 @@ Each AI provider has its own URL structure and parameters:
 **Oversized URL fallback (`MAX_SAFE_URL_LENGTH = 7500`):**
 `isUrlTooLong` and `resolveOpenAction` in `src/lib/providers.tsx` decide what
 "Open in {provider}" should do. When the generated URL exceeds 7500
-characters, `resolveOpenAction` returns the provider's bare `baseURL` and
-`shouldCopyPrompt: true`; `App.tsx`'s `handleOpenInProvider` then copies the
+characters, `resolveOpenAction` drops only the `q` parameter and returns
+`shouldCopyPrompt: true`. The other parameters stay, so the feature and the
+temporary chat setting still apply; `App.tsx`'s `handleOpenInProvider` then copies the
 trimmed prompt to the clipboard and opens that URL instead of the full one.
 The UI reflects this up front: the button label changes to "Copy prompt and
 open {provider}", and a persistent (non-hover) message in the counter line,
@@ -711,6 +726,10 @@ The notice is derived state (the URL it was raised for, compared against the
 current URL) rather than a value that needs manual resetting, so it clears
 itself automatically once the prompt, provider, feature, or temporary-chat
 setting changes.
+
+The opened tab must not get `window.opener`, a handle that can send this tab
+to another address. `"noopener"` would make `window.open` return `null` and
+hide a blocked popup, so the handler sets `opener` to `null` after the open.
 
 **Critical guidelines:**
 - Do not manually encode query strings - always use `URLSearchParams`.
