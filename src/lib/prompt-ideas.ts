@@ -38,15 +38,20 @@ export const PROMPT_IDEAS: readonly string[] = [
 ]
 
 /**
- * Picks an idea that is not the one on the screen now.
+ * Deals every idea except the one on screen, in a random order. The caller
+ * takes from the end and deals again when the deck is empty, so no idea
+ * repeats until all of them have shown.
  *
  * @param current - The index of the idea on the screen.
- * @param random - A number from 0 to 1. The default is `Math.random()`.
- * @returns The index of the next idea. It differs from `current`.
+ * @param random - Returns a number from 0 to 1. The default is `Math.random`.
+ * @returns The other indexes, shuffled.
  */
-export function nextIdeaIndex(current: number, random: number = Math.random()): number {
-  // Step 1.1: choose from every idea except the current one, so the text
-  // always changes.
-  const step = 1 + Math.floor(random * (PROMPT_IDEAS.length - 1))
-  return (current + step) % PROMPT_IDEAS.length
+export function dealIdeas(current: number, random: () => number = Math.random): number[] {
+  const deck = PROMPT_IDEAS.map((_, index) => index).filter((index) => index !== current)
+  // Step 1.1: Fisher-Yates, so each order is equally likely.
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[deck[i], deck[j]] = [deck[j], deck[i]]
+  }
+  return deck
 }

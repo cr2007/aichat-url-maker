@@ -11,7 +11,7 @@ import { ArrowUpRight, MessageCircleDashed, ChevronDown, Copy, Check } from "luc
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn, copyText, countCharacters, countWords } from "@/lib/utils"
-import { PROMPT_IDEAS, nextIdeaIndex } from "@/lib/prompt-ideas"
+import { PROMPT_IDEAS, dealIdeas } from "@/lib/prompt-ideas"
 
 /** The classes for a section label. The rem unit follows the browser text size. */
 const SECTION_LABEL_CLASS = "block text-[0.8125rem] font-medium text-muted-foreground"
@@ -72,6 +72,12 @@ const PILL_CLASS =
 
 /** The reason in the counter line when the link is too long. One short line, so the page does not move. */
 const OVERSIZE_MESSAGE = "Too long for a link."
+
+/** How long an example prompt takes to fade out. It matches `duration-120`. */
+const IDEA_FADE_OUT_MS = 120
+
+/** How long each example prompt stays. Enough to read the longest one. */
+const IDEA_INTERVAL_MS = 3500
 
 /**
  * The counter line under the prompt.
@@ -289,16 +295,37 @@ function PageContent() {
   // The prerendered page shows the first idea, so the first client render
   // does too. The effect below moves on from there.
   const [ideaIndex, setIdeaIndex] = useState(0)
+  const [ideaLeaving, setIdeaLeaving] = useState(false)
+  const ideaDeck = useRef<number[]>([])
 
-  // A new example prompt every 5 seconds, only while the field is empty, not
+  // A new example prompt every 3.5 seconds, only while the field is empty, not
   // focused, and on a visible tab. A person who types never sees it change.
   useEffect(() => {
     if (hasPrompt) return
+    // Step 1.1: the next idea comes from a shuffled deck, so none repeats soon.
+    const show = () =>
+      setIdeaIndex((current) => {
+        if (ideaDeck.current.length === 0) ideaDeck.current = dealIdeas(current)
+        return ideaDeck.current.pop()!
+      })
+    // Step 1.2: the first idea is random too. It fades in after hydration.
+    const first = setTimeout(show, 0)
+    // Step 1.3: the old idea fades out, then the new one fades in.
+    let swap: ReturnType<typeof setTimeout> | undefined
     const timer = setInterval(() => {
       if (document.hidden || document.activeElement === promptRef.current) return
-      setIdeaIndex((current) => nextIdeaIndex(current))
-    }, 5000)
-    return () => clearInterval(timer)
+      setIdeaLeaving(true)
+      swap = setTimeout(() => {
+        show()
+        setIdeaLeaving(false)
+      }, IDEA_FADE_OUT_MS)
+    }, IDEA_INTERVAL_MS)
+    return () => {
+      clearTimeout(first)
+      clearTimeout(swap)
+      clearInterval(timer)
+      setIdeaLeaving(false)
+    }
   }, [hasPrompt])
 
   // The keyboard shrinks the layout on a phone, and the pinned dock moves up
@@ -451,6 +478,9 @@ function PageContent() {
             >
               Prompt
             </label>
+            {/* The overlay draws the example, so a new one can fade in. The
+                real placeholder stays for screen readers, in a clear colour. */}
+            <div className="relative">
             <textarea
               ref={promptRef}
               id="prompt-input"
@@ -470,9 +500,27 @@ function PageContent() {
               dir="auto"
               aria-labelledby="prompt-label"
               aria-describedby={hasPrompt ? "prompt-meta" : undefined}
-              className="w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-muted-foreground border border-input focus-ring focus:border-primary resize-y"
+              className="block w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-transparent border border-input focus-ring focus:border-primary resize-y"
               rows={4}
             />
+            {prompt === "" && (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-px px-3 py-2.5 text-sm pointer-coarse:text-base text-muted-foreground"
+              >
+                For example:{" "}
+                {/* Only the idea changes, so only the idea fades: out fast,
+                    then in with an even curve, so the swap is easy to see. */}
+                <span
+                  key={ideaIndex}
+                  data-leaving={ideaLeaving}
+                  className="animate-[idea-in_280ms_ease-in-out] transition-[opacity,filter] duration-120 ease-in data-[leaving=true]:opacity-0 data-[leaving=true]:blur-[2px]"
+                >
+                  {PROMPT_IDEAS[ideaIndex]}
+                </span>
+              </span>
+            )}
+            </div>
             <PromptMeta text={deferredPrompt} tooLong={deferredTooLong} />
             {/* One announcement, when the prompt goes over the limit. No role,
                 so an empty region is not a stop for TalkBack. */}

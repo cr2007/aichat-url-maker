@@ -1,18 +1,17 @@
 import { describe, expect, test } from "bun:test"
-import { PROMPT_IDEAS, nextIdeaIndex } from "../../src/lib/prompt-ideas"
+import { PROMPT_IDEAS, dealIdeas } from "../../src/lib/prompt-ideas"
 
-describe("nextIdeaIndex", () => {
-  test("always moves to a different idea that exists", () => {
-    // The placeholder must change each time it changes. The two edges of
-    // Math.random() and a middle value cover the arithmetic.
-    for (let current = 0; current < PROMPT_IDEAS.length; current++) {
-      for (const random of [0, 0.5, 0.999999]) {
-        const next = nextIdeaIndex(current, random)
-        expect(next).not.toBe(current)
-        expect(next).toBeGreaterThanOrEqual(0)
-        expect(next).toBeLessThan(PROMPT_IDEAS.length)
-      }
+describe("dealIdeas", () => {
+  test("deals every other idea once, in an order that changes", () => {
+    // The ideas came in one fixed pattern, and an idea could repeat soon.
+    const all = PROMPT_IDEAS.map((_, index) => index)
+    for (const random of [() => 0, () => 0.999999, Math.random]) {
+      const deck = dealIdeas(3, random)
+      expect(deck).not.toContain(3)
+      expect([...deck, 3].sort((a, b) => a - b)).toEqual(all)
     }
+    const orders = new Set(Array.from({ length: 20 }, () => dealIdeas(0).join()))
+    expect(orders.size).toBeGreaterThan(1)
   })
 })
 

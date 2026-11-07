@@ -178,7 +178,7 @@ tests/
 |------|--------|
 | `tests/unit/providers.test.ts` | `buildURL` for every provider, param encoding, feature flags, temporary chat, the URL length threshold, and the `isUrlTooLong`/`resolveOpenAction` fallback, which drops only the prompt and keeps every setting |
 | `tests/unit/segmented-control.test.ts` | The indicator position and the drag gesture: `resolveActiveIndex`, `clampPosition`, `getSegmentWidth`, `positionFromDrag`, `snapToIndex`, `getDragTension` and `getIndicatorGeometry`, with the guards for unknown, empty, out-of-range and non-finite input |
-| `tests/unit/prompt-ideas.test.ts` | `nextIdeaIndex` always picks a different idea in range, and every idea is unique, short and plain |
+| `tests/unit/prompt-ideas.test.ts` | `dealIdeas` deals every other idea once, in an order that changes, and every idea is unique, short and plain |
 | `tests/unit/utils.test.ts` | `countWords` whitespace handling and scripts without spaces, `countCharacters` for emoji, flags and skin tones and its ASCII fast path, `cn` class merging, and `copyText` with a working, a rejecting and a missing clipboard |
 | `tests/unit/prerender-document.test.ts` | `insertMarkup` and `buildDocument`: the root element, the stylesheet, and the 14KB budget. Also `resolveAssetPath`, which takes the deploy base off a stylesheet URL |
 | `tests/unit/console-banner.test.ts` | The console art: one style for each `%c`, the row count, rows of equal width, no row wider than 80 columns, the ink and the paper, no emoji or em dash, no sentence, no `url()`, and a console that throws |
@@ -195,7 +195,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 | File | Covers |
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, the selected states in forced colors, a hover on the open button that raises the contrast with no glow, and a prompt field edge of 3:1 in both appearances |
-| `tests/browser/interaction.test.ts` | An opened tab with no `window.opener` and the blocked popup message, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
+| `tests/browser/interaction.test.ts` | The example prompt that matches the placeholder and leaves on the first letter, an opened tab with no `window.opener` and the blocked popup message, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
 | `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, no scrollbar in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
@@ -310,9 +310,16 @@ for an expert who makes ten links in a row.
   as ChatGPT names them, so a person finds the same words there.
 - The prompt placeholder is an example, not an instruction. It defines the
   word better than a definition does. It moves to a new example from
-  `PROMPT_IDEAS` every 5 seconds, only while the field is empty, not
-  focused, and on a visible tab. The first render shows the first idea, so
-  the prerendered page and hydration agree.
+  `PROMPT_IDEAS` every 3.5 seconds, only while the field is empty, not
+  focused, and on a visible tab. The prerendered page shows the first idea,
+  so hydration agrees; then a random idea fades in. `dealIdeas` deals a
+  shuffled deck, so no idea repeats until all have shown.
+- The example is an `aria-hidden` overlay with the same padding and font as
+  the field. The old idea fades out over 120ms, then the new one fades in
+  from a 2px blur over 280ms with `ease-in-out`. The even curve makes the
+  fade-in visible; a strong ease-out finished it before the eye saw it.
+  Only the idea fades; "For example:" stays. The real placeholder stays in a clear colour
+  for screen readers.
 - A button label starts with a verb, in sentence case.
 - An icon goes next to a label, never alone, unless the action is universal.
   The open button has a trailing arrow, because it opens a new tab.

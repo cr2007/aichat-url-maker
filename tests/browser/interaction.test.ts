@@ -750,6 +750,25 @@ describe("plain use for every reader", () => {
     await opened.close()
   })
 
+  test("the example prompt matches the placeholder and leaves on the first letter", async () => {
+    // The example is an overlay so a new one can fade in. A screen reader
+    // still reads the real placeholder.
+    const opened = await openPage()
+    const read = () =>
+      opened.page.evaluate(() => {
+        const overlay = document.querySelector("#prompt-section > div > span[aria-hidden]")
+        return {
+          overlay: overlay?.textContent ?? null,
+          placeholder: document.getElementById("prompt-input")!.getAttribute("placeholder"),
+        }
+      })
+    const empty = await read()
+    expect(empty.overlay).toBe(empty.placeholder)
+    await opened.page.fill("#prompt-input", "a")
+    expect((await read()).overlay).toBeNull()
+    await opened.close()
+  })
+
   test("Arabic in the prompt runs from the right", async () => {
     const opened = await openPage()
     await fillPrompt(opened.page, "\u0644\u062e\u0635 \u0647\u0630\u0627 \u0627\u0644\u0628\u062d\u062b")

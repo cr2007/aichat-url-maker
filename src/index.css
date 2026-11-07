@@ -47,6 +47,12 @@
 /* The link text settles into its new lines as the box opens. The blur hides
    the jump of the reflow, so the open reads as one shape that morphs, not as
    a cut-off line that slides into view. */
+/* A new example prompt comes out of a light blur, so the swap reads as one
+   line that changes, not as a jump. */
+@keyframes idea-in {
+  from { opacity: 0; filter: blur(2px); }
+}
+
 @keyframes link-settle {
   from { opacity: 0.4; filter: blur(2px); }
 }
