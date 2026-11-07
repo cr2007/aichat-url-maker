@@ -41,6 +41,13 @@
   to   { transform: scale(1); opacity: 1; }
 }
 
+/* The link text settles into its new lines as the box opens. The blur hides
+   the jump of the reflow, so the open reads as one shape that morphs, not as
+   a cut-off line that slides into view. */
+@keyframes link-settle {
+  from { opacity: 0.4; filter: blur(2px); }
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

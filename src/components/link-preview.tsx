@@ -89,16 +89,9 @@ function LinkActions({ url, share, disabled }: { url: string; share: boolean; di
 }
 
 /**
- * The link in one box, with its Copy and Share buttons in the bottom right
- * corner. It lives in the pinned dock on a phone.
- *
- * Closed, the box shows the first line of the link, and the text stops
- * before the buttons. A tap on the text opens the box: the text uses the full
- * width, and the box grows upward to the natural height of the link, because
- * the dock is pinned to the bottom. The buttons never move. A second tap
- * closes it. One element changes height, as the Feedback button on
- * emilkowal.ski does. The motion is short and plain, so it reads as the
- * expected result of the tap, not as an effect.
+ * The link in one box in the phone dock, with Copy and Share fixed in the
+ * bottom right corner. Closed, it shows one line. A tap grows the box upward
+ * to the full link; a second tap, Escape or a tap outside closes it.
  *
  * @param props.url - The generated URL.
  * @param props.tooLong - True while the URL is too long to share.
@@ -151,16 +144,18 @@ function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
         aria-expanded={open}
         aria-controls="url-full"
         onClick={() => setExpanded(!open)}
-        className="flex min-h-11 w-full items-start gap-2 py-3 pl-3 pr-[calc(var(--actions-width,0px)+0.75rem)] text-left text-[0.8125rem] leading-5 text-muted-foreground focus-ring transition-[color,background-color] duration-150 hover:text-foreground group-data-[open=true]:pr-3 group-data-[open=true]:text-foreground"
+        // On close the text keeps the full width until the box has shrunk.
+        // An early switch to the narrow column made the text jump.
+        className="flex min-h-11 w-full items-start gap-2 py-3 pl-3 pr-[calc(var(--actions-width,0px)+0.75rem)] text-left text-[0.8125rem] leading-5 text-muted-foreground focus-ring [transition:color_150ms,background-color_150ms,padding-right_0s_250ms] motion-reduce:delay-0 hover:text-foreground group-data-[open=true]:pr-3 group-data-[open=true]:text-foreground group-data-[open=true]:delay-0"
       >
         <Link aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         {hasUrl && <span className="sr-only">{open ? "Hide the full link: " : "Show the full link: "}</span>}
-        {/* One line while closed. While open, the natural height of the link,
-            plus room at the bottom for the buttons. The open takes 250ms and
-            the close 200ms, on the app ease-out curve. */}
+        {/* One line closed, the full link open. The button room is padding, so
+            it moves with the height. The close uses ease-in-out, so it does not
+            rush. The scrollbar is hidden; a touch still scrolls a long link. */}
         <span
           id="url-full"
-          className="relative block h-5 min-w-0 flex-1 overflow-hidden wrap-anywhere [interpolate-size:allow-keywords] transition-[height] duration-200 ease-out group-data-[open=true]:h-auto group-data-[open=true]:max-h-60 group-data-[open=true]:overflow-y-auto group-data-[open=true]:pb-11 group-data-[open=true]:duration-250"
+          className="relative block h-5 min-w-0 flex-1 overflow-hidden wrap-anywhere [interpolate-size:allow-keywords] [scrollbar-width:none] transition-[height,padding-bottom] duration-250 ease-in-out group-data-[open=true]:h-auto group-data-[open=true]:ease-out group-data-[open=true]:max-h-60 group-data-[open=true]:overflow-y-auto group-data-[open=true]:pb-11 group-data-[open=true]:animate-[link-settle_250ms_var(--ease-out)]"
         >
           {hasUrl ? readableUrl(url) : "Type a prompt to make a link."}
           {/* The fade at the end of the first line says that there is more. */}

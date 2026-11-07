@@ -520,6 +520,36 @@ describe("the dock on a phone, worst cases", () => {
     await phone.close()
   })
 
+  test("the close starts gently, the text keeps its lines, and no scrollbar shows", async () => {
+    // A real phone showed three faults: the room for the buttons left in the
+    // first frame of the close (44px at once), the text fell into a narrow
+    // column of five lines, and a scrollbar showed while the box grew.
+    const phone = await openPage({ touch: true, width: 412, height: 915, initScript: SHARE_STUB })
+    await fillPrompt(phone.page, "Plan a 3-day trip to Goa with a budget for two people.")
+    const toggle = phone.page.locator("#url-preview-toggle")
+    const line = (await toggle.boundingBox())!
+    const sizes = () =>
+      phone.page.evaluate(() => {
+        const text = document.getElementById("url-full")!
+        return {
+          box: document.getElementById("url-preview")!.getBoundingClientRect().height,
+          width: Math.round(text.getBoundingClientRect().width),
+          bar: getComputedStyle(text).scrollbarWidth,
+        }
+      })
+    await phone.page.touchscreen.tap(line.x + 30, line.y + line.height / 2)
+    await phone.page.waitForTimeout(40)
+    expect((await sizes()).bar).toBe("none")
+    await phone.page.waitForTimeout(500)
+    const open = await sizes()
+    await phone.page.keyboard.press("Escape")
+    await phone.page.waitForTimeout(30)
+    const early = await sizes()
+    expect(open.box - early.box).toBeLessThan(20)
+    expect(early.width).toBe(open.width)
+    await phone.close()
+  })
+
   test("Share shows on a phone with the share sheet, and never on a desktop", async () => {
     const phone = await openPage({ ...PHONE, initScript: SHARE_STUB })
     expect(await phone.page.locator("#url-preview button", { hasText: "Share" }).count()).toBeGreaterThan(0)
