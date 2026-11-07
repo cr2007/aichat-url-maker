@@ -190,7 +190,7 @@ describe("the copy button", () => {
       })
     })
 
-    await opened.page.click('#url-preview [aria-label="Copy link"]')
+    await opened.page.click('#url-preview button:has-text("Copy")')
     await opened.page.waitForTimeout(300)
 
     const status = await opened.page.evaluate(() =>
@@ -664,5 +664,63 @@ describe("the home screen icons", () => {
     expect(has("512x512", "any")).toBe(true)
     expect(has("512x512", "maskable")).toBe(true)
     await opened.close()
+  })
+})
+
+describe("plain use for every reader", () => {
+  test("a screen reader hears each feature description once, and a short row name", async () => {
+    // Each description was in the reading order and was also the description
+    // of its pill, so a line-by-line reader heard it twice. The temporary chat
+    // row had its whole description in its name.
+    const opened = await openPage()
+    const tree = await opened.page.locator("main").ariaSnapshot()
+    expect(tree).not.toContain("text: Makes a picture from the prompt.")
+    expect(tree).toContain('button "Temporary chat"')
+    const description = await opened.page.evaluate(() => {
+      const id = document.querySelector("#feature-picker button")!.getAttribute("aria-describedby")!
+      return document.getElementById(id)?.textContent
+    })
+    expect(description).toBeTruthy()
+    await opened.close()
+  })
+
+  test("Ctrl+Enter in the prompt opens the provider", async () => {
+    const opened = await openPage({ initScript: "window.open = (u) => { window.__opened = String(u); return window }" })
+    await fillPrompt(opened.page)
+    await opened.page.focus("#prompt-input")
+    await opened.page.keyboard.press("Control+Enter")
+    expect(await opened.page.evaluate(() => (window as unknown as { __opened?: string }).__opened)).toContain("chatgpt.com")
+    await opened.close()
+  })
+
+  test("Arabic in the prompt runs from the right", async () => {
+    const opened = await openPage()
+    await fillPrompt(opened.page, "\u0644\u062e\u0635 \u0647\u0630\u0627 \u0627\u0644\u0628\u062d\u062b")
+    expect(await opened.page.evaluate(() => getComputedStyle(document.getElementById("prompt-input")!).direction)).toBe("rtl")
+    await opened.close()
+  })
+
+  test("spaces at the ends of the prompt stay out of the link and the count", async () => {
+    const opened = await openPage()
+    await fillPrompt(opened.page, "\n  Summarize this paper.  \n")
+    expect(await generatedUrl(opened.page)).toBe("https://chatgpt.com/?q=Summarize+this+paper.")
+    expect(await opened.page.textContent("#prompt-meta")).toMatch(/^21 characters/)
+    await opened.close()
+  })
+
+  test("a link that is too long cannot be copied or shared", async () => {
+    // The page called the link too long, but Copy still copied it.
+    for (const options of [{ touch: true, width: 412, height: 740 }, { width: 1280, height: 800 }]) {
+      const opened = await openPage(options)
+      await fillPrompt(opened.page, OVERSIZED_PROMPT)
+      const enabled = await opened.page.evaluate(() =>
+        [...document.querySelectorAll<HTMLButtonElement>("#generated-url-section button, #url-preview button")]
+          .filter((b) => b.offsetParent !== null && /copy|share/i.test(b.textContent + (b.getAttribute("aria-label") ?? "")))
+          .map((b) => !b.disabled)
+      )
+      expect(enabled.length).toBeGreaterThan(0)
+      expect(enabled.every((on) => !on)).toBe(true)
+      await opened.close()
+    }
   })
 })

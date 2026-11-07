@@ -4,8 +4,12 @@ import { cn, copyText } from "@/lib/utils"
 
 interface CopyButtonProps {
   value: string
-  /** Hide the success line. The tick on the button is then the only cue. */
+  /** Hide the success line. The button itself then shows the result. */
   quiet?: boolean
+  /** Show the word "Copy" next to the icon. An icon alone is not clear to everyone. */
+  label?: boolean
+  /** Turn the button off, for example while the link is too long to use. */
+  disabled?: boolean
   className?: string
 }
 
@@ -18,10 +22,12 @@ interface CopyButtonProps {
  * @param props.value - The text to copy.
  * @param props.quiet - Hide the success line from view. A screen reader still
  *   hears it.
+ * @param props.label - Show "Copy", then "Copied", next to the icon.
+ * @param props.disabled - Turn the button off.
  * @param props.className - Classes for the button.
  * @returns The button and its status line.
  */
-function CopyButton({ value, quiet = false, className }: CopyButtonProps) {
+function CopyButton({ value, quiet = false, label = false, disabled = false, className }: CopyButtonProps) {
   const [isCopied, setIsCopied] = React.useState(false)
   const [failed, setFailed] = React.useState(false)
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -58,10 +64,11 @@ function CopyButton({ value, quiet = false, className }: CopyButtonProps) {
       <button
         onClick={handleCopy}
         type="button"
-        disabled={!value}
-        aria-label="Copy link"
+        disabled={disabled || !value}
+        aria-label={label ? undefined : "Copy link"}
         className={cn(
-          "grid size-11 shrink-0 place-items-center rounded-md disabled:pointer-events-none disabled:opacity-50",
+          "flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md disabled:pointer-events-none disabled:opacity-50",
+          label ? "px-3 text-[0.8125rem] font-medium" : "w-11",
           "transition-[color,background-color,opacity,scale] duration-150",
           "active:scale-[0.97] motion-reduce:active:scale-100",
           failed ? "text-destructive" : "text-muted-foreground hover:text-foreground hover:bg-muted",
@@ -76,6 +83,7 @@ function CopyButton({ value, quiet = false, className }: CopyButtonProps) {
         ) : (
           <Copy className="size-4" />
         )}
+        {label && <span>{isCopied ? "Copied" : "Copy"}</span>}
       </button>
       {/* The result is announced and stays in the layout, so it cannot cover
           the label above the field. */}
@@ -96,15 +104,18 @@ function CopyButton({ value, quiet = false, className }: CopyButtonProps) {
 
 interface CopyableInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string
+  /** Turn the copy button off, for example while the link is too long to use. */
+  copyDisabled?: boolean
 }
 
 /**
  * A read-only text field with a copy button.
  *
  * @param props.value - The text to show and to copy.
+ * @param props.copyDisabled - Turn the copy button off.
  * @returns The field.
  */
-function CopyableInput({ value, className, ...props }: CopyableInputProps) {
+function CopyableInput({ value, copyDisabled = false, className, ...props }: CopyableInputProps) {
   return (
     <div className="relative">
       <textarea
@@ -118,7 +129,7 @@ function CopyableInput({ value, className, ...props }: CopyableInputProps) {
         )}
         {...props}
       />
-      <CopyButton value={value} className="absolute right-1 top-1" />
+      <CopyButton value={value} disabled={copyDisabled} className="absolute right-1 top-1" />
     </div>
   )
 }

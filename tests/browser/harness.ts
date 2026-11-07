@@ -80,6 +80,8 @@ export interface PageOptions {
   forcedColors?: "active" | "none"
   /** Set true to emulate a phone: a coarse pointer, touch, and no hover. */
   touch?: boolean
+  /** A script that runs before the page loads, for example to stub an API. */
+  initScript?: string
 }
 
 /** A page, its context, and the errors it reported. */
@@ -115,6 +117,8 @@ export async function openPage(options: PageOptions = {}): Promise<OpenPage> {
     isMobile: options.touch,
     deviceScaleFactor: 1,
   })
+
+  if (options.initScript) await context.addInitScript(options.initScript)
 
   // Step 1.2: collect every error. A test then asserts that there were none.
   const errors: string[] = []

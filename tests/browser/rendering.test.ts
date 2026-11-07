@@ -89,18 +89,22 @@ describe("text at 200 percent", () => {
     await opened.close()
   })
 
-  test("the pinned open button leaves most of the screen to the content", async () => {
-    // A long notice once sat in the bar, and at large text it covered more
-    // than half of a small screen.
+  test("the open button never covers most of the screen", async () => {
+    // A long notice once sat in the pinned bar, and at large text it covered
+    // more than half of a small screen. At large text the dock now stops
+    // being pinned, so the page can scroll it out of the way.
     const opened = await openPage({ width: 320, height: 700 })
     await opened.page.evaluate(() => {
       document.documentElement.style.fontSize = "32px"
     })
     await fillPrompt(opened.page, OVERSIZED_PROMPT)
-    const share = await opened.page.evaluate(
-      () => document.getElementById("open-action-section")!.getBoundingClientRect().height / innerHeight
-    )
-    expect(share).toBeLessThan(0.4)
+    const covered = await opened.page.evaluate(() => {
+      const dock = document.getElementById("open-action-section")!
+      const pinned = getComputedStyle(dock).position === "sticky"
+      return pinned ? dock.getBoundingClientRect().height / innerHeight : 0
+    })
+    expect(covered).toBeLessThan(0.4)
+    expect(await opened.page.evaluate(() => getComputedStyle(document.getElementById("open-action-section")!).position)).toBe("static")
     // The link is still in the page, in the field above the dock.
     expect(await opened.page.isVisible("#generated-url")).toBe(true)
     await opened.close()
@@ -281,13 +285,13 @@ describe("the oversized prompt", () => {
     const label = await opened.page.evaluate(
       () => document.getElementById("open-in-provider")?.textContent ?? ""
     )
-    expect(label).toContain("Copy Prompt")
+    expect(label).toContain("Copy prompt")
     // The reason stays on the page, so a touch device sees it too. It is one
     // message, in the counter line, and not a second one in the pinned bar.
     const notice = await opened.page.evaluate(
       () => document.getElementById("prompt-meta")?.textContent ?? ""
     )
-    expect(notice).toContain("copies the prompt")
+    expect(notice).toContain("Too long for a link.")
     expect(await opened.page.locator("#oversize-notice").count()).toBe(0)
     await opened.close()
   })
@@ -472,6 +476,56 @@ describe("how it works", () => {
     expect(await phone.page.getAttribute("#how-it-works-toggle", "aria-expanded")).toBe("true")
     expect(await phone.page.getAttribute("#how-it-works-panel", "inert")).toBeNull()
     expect(await inView()).toBe(true)
+    await phone.close()
+  })
+})
+
+describe("the dock on a phone, worst cases", () => {
+  const PHONE = { touch: true, width: 320, height: 640 } as const
+  const SHARE_STUB = "navigator.share = async () => {}"
+
+  test("the open panel covers the whole row", async () => {
+    // The panel covered the link line only, and the page behind showed as a
+    // stray box beside it.
+    const phone = await openPage(PHONE)
+    await fillPrompt(phone.page)
+    const line = (await phone.page.locator("#url-preview-toggle").boundingBox())!
+    await phone.page.touchscreen.tap(line.x + 30, line.y + line.height / 2)
+    await phone.page.waitForTimeout(400)
+    const [panel, row] = await phone.page.evaluate(() =>
+      ["url-full-panel", "url-preview"].map((id) => document.getElementById(id)!.getBoundingClientRect().width)
+    )
+    expect(panel).toBe(row)
+    await phone.close()
+  })
+
+  test("the link line shows the letters of the prompt, not percent codes", async () => {
+    const phone = await openPage(PHONE)
+    await fillPrompt(phone.page, "\u0644\u062e\u0635 \u0647\u0630\u0627 1+1")
+    const line = await phone.page.textContent("#url-preview-toggle")
+    expect(line).toContain("\u0644\u062e\u0635 \u0647\u0630\u0627 1+1")
+    expect(line).not.toContain("%")
+    await phone.close()
+  })
+
+  test("Share shows on a phone with the share sheet, and never on a desktop", async () => {
+    const phone = await openPage({ ...PHONE, initScript: SHARE_STUB })
+    expect(await phone.page.locator("#url-preview button", { hasText: "Share" }).count()).toBeGreaterThan(0)
+    await phone.close()
+    const desktop = await openPage({ width: 1280, height: 800, initScript: SHARE_STUB })
+    expect(await desktop.page.locator("button", { hasText: "Share" }).count()).toBe(0)
+    await desktop.close()
+  })
+
+  test("the oversize message is one line, so the page does not move", async () => {
+    // The long message wrapped on a phone and pushed the page down 38px.
+    const phone = await openPage(PHONE)
+    await fillPrompt(phone.page, OVERSIZED_PROMPT)
+    const lines = await phone.page.evaluate(() => {
+      const meta = document.getElementById("prompt-meta")!
+      return Math.round(meta.getBoundingClientRect().height / parseFloat(getComputedStyle(meta).lineHeight))
+    })
+    expect(lines).toBe(2)
     await phone.close()
   })
 })

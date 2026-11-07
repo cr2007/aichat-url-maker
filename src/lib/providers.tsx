@@ -1,11 +1,11 @@
 import {
   Search,
   ImageIcon,
-  Lightbulb,
+  Brain,
   BookOpen,
   ShoppingCart,
   GraduationCap,
-  PenTool,
+  SquarePen,
 } from "lucide-react"
 
 /** The id of a provider. It is also the value of the provider control. */
@@ -120,7 +120,7 @@ const CHATGPT_FEATURES: FeatureOption[] = [
     label: "Search",
     value: "search",
     icon: <Search className="w-4 h-4" />,
-    description: "Looks for current information on the web before it answers.",
+    description: "Searches the web for up-to-date facts first.",
   },
   {
     label: "Image generation",
@@ -131,7 +131,7 @@ const CHATGPT_FEATURES: FeatureOption[] = [
   {
     label: "Thinking",
     value: "think",
-    icon: <Lightbulb className="w-4 h-4" />,
+    icon: <Brain className="w-4 h-4" />,
     description: "Takes longer and works through the problem step by step.",
   },
   {
@@ -150,12 +150,12 @@ const CHATGPT_FEATURES: FeatureOption[] = [
     label: "Study and Learn",
     value: "study",
     icon: <GraduationCap className="w-4 h-4" />,
-    description: "Teaches the topic instead of giving only the answer.",
+    description: "Helps you learn the topic, not only get the answer.",
   },
   {
     label: "Canvas",
     value: "canvas",
-    icon: <PenTool className="w-4 h-4" />,
+    icon: <SquarePen className="w-4 h-4" />,
     description: "Opens a side panel to write or edit with the assistant.",
   },
 ]

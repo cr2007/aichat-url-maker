@@ -1,4 +1,4 @@
-import { Fragment, useState, useCallback } from "react"
+import { Fragment, useState, useCallback, useSyncExternalStore } from "react"
 import type { ReactNode } from "react"
 import { CopyableInput } from "@/components/copyable-input"
 import { LinkPreview } from "@/components/link-preview"
@@ -7,7 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Toggle } from "@/components/ui/toggle"
 import { SegmentedControl } from "@/components/ui/segmented-control"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { MessageCircleDashed, ChevronDown, Copy, Check } from "lucide-react"
+import { ArrowUpRight, MessageCircleDashed, ChevronDown, Copy, Check } from "lucide-react"
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature } from "@/lib/providers"
 import { cn, copyText, countCharacters, countWords } from "@/lib/utils"
@@ -68,6 +68,18 @@ const TEMPORARY_CHAT_CLASS =
  */
 const PILL_CLASS =
   "flex items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 max-w-full whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary transition-[background-color,color,border-color,scale] duration-150 text-sm font-medium"
+
+/** No subscription: the platform of a device does not change. */
+const subscribeNever = () => () => {}
+
+/**
+ * True on an Apple device, where the shortcut key is Command, not Control.
+ *
+ * @returns True on macOS, iOS and iPadOS.
+ */
+function isApplePlatform() {
+  return /Mac|iPhone|iPad/.test(navigator.platform)
+}
 
 /**
  * Shows its content, or folds it away.
@@ -158,15 +170,20 @@ function PageContent() {
   const feature = provider.supportsFeatures ? selectedFeature : ""
   const isTemporary = provider.supportsTemporaryChat ? temporaryChat : false
 
-  const url = prompt.trim() ? provider.buildURL(prompt, feature, isTemporary) : ""
+  // Spaces and new lines at the ends are not part of the prompt. They would
+  // only make the link longer and the count wrong.
+  const trimmedPrompt = prompt.trim()
+  const url = trimmedPrompt ? provider.buildURL(trimmedPrompt, feature, isTemporary) : ""
   const isTooLong = isUrlTooLong(url)
   // A prompt of spaces only gives no URL, so it gets no count either.
-  const hasPrompt = prompt.trim().length > 0
-  const wordCount = countWords(prompt)
-  const characterCount = countCharacters(prompt)
-  // One message for the oversize case. It sits in the page, so a touch device
-  // sees it, and it is not in the pinned bar, which must stay small.
-  const oversizeMessage = `Too long for a link. Opening ${provider.name} copies the prompt, ready to paste.`
+  const hasPrompt = trimmedPrompt.length > 0
+  const wordCount = countWords(trimmedPrompt)
+  const characterCount = countCharacters(trimmedPrompt)
+  // One short line, so it stays one line on a phone and the page does not
+  // move. The open button says what happens next.
+  const oversizeMessage = "Too long for a link."
+  // The server has no navigator, so the first render shows "Ctrl".
+  const isApple = useSyncExternalStore(subscribeNever, isApplePlatform, () => false)
   const popupBlocked = blockedURL !== null && blockedURL === url
   const copyFailed = copyFailedURL !== null && copyFailedURL === url
 
@@ -193,7 +210,7 @@ function PageContent() {
     // a rejected write must reach the person instead of being discarded.
     if (shouldCopyPrompt) {
       setCopyFailedURL(null)
-      void copyText(prompt).then((copied) => {
+      void copyText(trimmedPrompt).then((copied) => {
         if (!copied) setCopyFailedURL(url)
       })
     }
@@ -201,7 +218,7 @@ function PageContent() {
     // Step 1.4: open the tab. Record the URL if the browser blocks the tab.
     const opened = window.open(targetURL, "_blank")
     setBlockedURL(opened ? null : url)
-  }, [url, prompt, provider])
+  }, [url, trimmedPrompt, provider])
 
   /**
    * Selects a feature, or clears it.
@@ -265,21 +282,23 @@ function PageContent() {
         className="mx-auto flex max-w-xl flex-col gap-5 lg:grid lg:max-w-5xl lg:grid-cols-2 lg:items-start lg:gap-x-12"
       >
         {/* Header */}
-        <div id="app-header" className="text-center pt-2 lg:col-span-2">
+        {/* Left aligned from 1024px, like the two columns below it. */}
+        <header id="app-header" className="text-center pt-2 lg:col-span-2 lg:text-left">
           <h1 id="app-title" className="text-2xl font-semibold tracking-tight pb-0.5">
             AI Prompt URL Generator
           </h1>
-          <p id="app-tagline" className="text-sm text-muted-foreground mt-1.5">
-            Prefill a prompt for ChatGPT, Claude, or Perplexity and share it as a link.
+          <p id="app-tagline" className="text-sm text-muted-foreground mt-1.5 text-balance">
+            Type a question. Get a link that opens ChatGPT, Claude or Perplexity with it ready.
           </p>
-        </div>
+        </header>
 
         <div id="inputs-column" className="contents lg:flex lg:flex-col lg:gap-5">
           {/* Provider selector */}
           <div id="provider-section" className="space-y-2">
-            <span id="provider-label" className={SECTION_LABEL_CLASS}>Provider</span>
+            {/* "Provider" reads as an internet or phone company to many people. */}
+            <span id="provider-label" className={SECTION_LABEL_CLASS}>AI app</span>
             <SegmentedControl
-              label="Provider"
+              label="AI app"
               options={PROVIDER_OPTIONS}
               value={selectedProvider}
               onValueChange={handleProviderChange}
@@ -299,7 +318,18 @@ function PageContent() {
               id="prompt-input"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder={`Enter your ${provider.name} prompt here...`}
+              onKeyDown={(e) => {
+                // Ctrl or Command with Enter opens the link, so a person who
+                // makes many links never leaves the keyboard.
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault()
+                  handleOpenInProvider()
+                }
+              }}
+              // An example defines "prompt" better than the word does.
+              placeholder="For example: Plan a 3-day trip to Goa"
+              // Arabic and Hebrew then run from the right.
+              dir="auto"
               aria-describedby={hasPrompt ? "prompt-meta" : undefined}
               className="w-full px-3 py-2.5 rounded-md bg-secondary text-foreground text-sm pointer-coarse:text-base placeholder:text-muted-foreground border border-border focus-ring focus:border-primary resize-y"
               rows={4}
@@ -310,7 +340,7 @@ function PageContent() {
             <p
               id="prompt-meta"
               className={cn(
-                "min-h-5 text-[0.8125rem] text-right",
+                "min-h-5 text-[0.8125rem] text-right tabular-nums",
                 isTooLong ? "text-warning font-medium" : "text-muted-foreground"
               )}
             >
@@ -337,7 +367,7 @@ function PageContent() {
           {/* Features. The row folds away on a provider that has none. */}
           <Collapse id="feature-collapse" open={provider.supportsFeatures}>
             <div id="feature-section" className="space-y-2">
-              <span id="feature-label" className={SECTION_LABEL_CLASS}>Features</span>
+              <span id="feature-label" className={SECTION_LABEL_CLASS}>Features (optional)</span>
               {/* Radix marks each item role="radio" for a single group, but a
                   radio cannot be unchecked. These are toggle buttons: one at a
                   time, and a second press clears the choice. aria-pressed says
@@ -371,9 +401,10 @@ function PageContent() {
                         <TooltipContent>{option.description}</TooltipContent>
                       </Tooltip>
                       {/* The tooltip is in the page only while it is open, so
-                          the description lives here. A screen reader then
-                          has it at rest. */}
-                      <span id={`feature-${option.value}-description`} className="sr-only">
+                          the description lives here. It is hidden from the
+                          reading order, so a screen reader reads it once:
+                          as the description of the pill. */}
+                      <span id={`feature-${option.value}-description`} hidden>
                         {option.description}
                       </span>
                     </Fragment>
@@ -397,15 +428,19 @@ function PageContent() {
               id="temporary-chat-section"
               pressed={temporaryChat}
               onPressedChange={setTemporaryChat}
+              // The name is the first line. The second line is the description,
+              // so a screen reader pauses between them.
+              aria-labelledby="temporary-chat-label"
+              aria-describedby="temporary-chat-description"
               className={TEMPORARY_CHAT_CLASS}
             >
               <span className="flex flex-1 flex-col gap-1 text-left">
-                <span className="flex items-center gap-1.5 text-sm font-medium">
+                <span id="temporary-chat-label" className="flex items-center gap-1.5 text-sm font-medium">
                   {tempProvider.temporaryChatIcon ?? <MessageCircleDashed className="size-4" />}
                   Temporary chat
                 </span>
                 {/* One line on the on state. A person infers the off state. */}
-                <span className="text-[0.8125rem] font-normal text-muted-foreground">
+                <span id="temporary-chat-description" className="text-[0.8125rem] font-normal text-muted-foreground">
                   Keeps this chat out of your {tempProvider.name} history.
                 </span>
               </span>
@@ -439,14 +474,15 @@ function PageContent() {
               htmlFor="generated-url"
               className={SECTION_LABEL_CLASS}
             >
-              Generated URL
+              Your link
             </label>
             {/* The field is in the page before a prompt exists. It then has
                 the same size before and after the first character. */}
             <CopyableInput
               id="generated-url"
               value={url}
-              placeholder="Enter a prompt above to generate a URL"
+              copyDisabled={isTooLong}
+              placeholder="Type a prompt to make a link."
             />
           </div>
 
@@ -460,17 +496,26 @@ function PageContent() {
               stays in the page. */}
           <div
             id="open-action-section"
-            className="sticky bottom-0 z-20 -mx-4 flex flex-col gap-1.5 bg-background px-4 pt-2 pb-3 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-linear-to-t before:from-background before:to-transparent lg:static lg:mx-0 lg:bg-transparent lg:p-0 lg:before:hidden"
+            // With large text the column is under 16rem, and a pinned dock would
+            // cover too much of the screen. It then stays in the page.
+            className="sticky @max-[16rem]:static bottom-0 z-20 -mx-4 flex flex-col gap-1.5 bg-background px-4 pt-2 pb-3 before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-linear-to-t before:from-background before:to-transparent lg:static lg:mx-0 lg:bg-transparent lg:p-0 lg:before:hidden"
           >
-            <LinkPreview url={url} className="@max-[16rem]:hidden lg:hidden" />
+            <LinkPreview url={url} tooLong={isTooLong} className="@max-[16rem]:hidden lg:hidden" />
             <Button
               id="open-in-provider"
               onClick={handleOpenInProvider}
               disabled={!url}
+              aria-keyshortcuts="Control+Enter Meta+Enter"
               className="w-full h-auto min-h-11 py-3 font-medium rounded-md whitespace-normal text-center"
             >
               {isTooLong ? <Copy className="w-4 h-4" /> : provider.icon}
-              {isTooLong ? `Copy Prompt & Open ${provider.name}` : `Open in ${provider.name}`}
+              {isTooLong ? `Copy prompt and open ${provider.name}` : `Open in ${provider.name}`}
+              {/* It opens a new tab. The arrow says so before the press. */}
+              <ArrowUpRight aria-hidden="true" className="size-4 opacity-70" />
+              {/* The shortcut, for a mouse and keyboard on a wide screen only. */}
+              <kbd className="ml-1 hidden rounded border border-current/30 px-1 font-sans text-[0.8125rem] opacity-70 lg:pointer-fine:inline">
+                {isApple ? "\u2318 \u21b5" : "Ctrl \u21b5"}
+              </kbd>
             </Button>
             {copyFailed && (
               <p
@@ -520,7 +565,7 @@ function PageContent() {
               <li>Choose a provider.</li>
               <li>Type your prompt.</li>
               <li>Pick a feature, if you want one.</li>
-              <li>Copy the link to share it, or open it in {provider.name}.</li>
+              <li>Copy or share the link, or open it in {provider.name}.</li>
             </ol>
           </Collapse>
         </div>
