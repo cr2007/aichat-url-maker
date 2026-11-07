@@ -24,16 +24,17 @@ export default defineConfig({
         name: 'AI Prompt URL Generator',
         short_name: 'AI Prompt URLs',
         description: 'Create shareable AI chat URLs with prefilled prompts',
-        theme_color: '#09090b',
-        background_color: '#09090b',
+        theme_color: '#0a0a0a',
+        background_color: '#0a0a0a',
         display: 'standalone',
+        // The PNG files make the app installable on Android and give iOS a
+        // home screen icon. The maskable one has no rounded corners and keeps
+        // its mark inside the safe circle, so a launcher can cut any shape.
         icons: [
-          {
-            src: 'favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
-          },
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
     }),
