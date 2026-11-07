@@ -517,6 +517,21 @@ describe("the dock on a phone, worst cases", () => {
     await desktop.close()
   })
 
+  test("the keyboard does not hide the prompt field under the dock", async () => {
+    // TalkBack on a real phone showed it: the keyboard shrinks the layout, the
+    // pinned dock moves up, and it covered the field that had the focus.
+    const phone = await openPage({ touch: true, width: 412, height: 740 })
+    await phone.page.focus("#prompt-input")
+    await phone.page.setViewportSize({ width: 412, height: 420 })
+    await phone.page.waitForTimeout(400)
+    const [field, dock] = await phone.page.evaluate(() =>
+      ["prompt-input", "open-action-section"].map((id) => document.getElementById(id)!.getBoundingClientRect())
+    )
+    expect(field.bottom).toBeLessThanOrEqual(dock.top)
+    expect(field.top).toBeGreaterThanOrEqual(0)
+    await phone.close()
+  })
+
   test("the oversize message is one line, so the page does not move", async () => {
     // The long message wrapped on a phone and pushed the page down 38px.
     const phone = await openPage(PHONE)

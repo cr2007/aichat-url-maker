@@ -1,4 +1,4 @@
-import { Fragment, useState, useCallback, useSyncExternalStore } from "react"
+import { Fragment, useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react"
 import type { ReactNode } from "react"
 import { CopyableInput } from "@/components/copyable-input"
 import { LinkPreview } from "@/components/link-preview"
@@ -184,6 +184,19 @@ function PageContent() {
   const oversizeMessage = "Too long for a link."
   // The server has no navigator, so the first render shows "Ctrl".
   const isApple = useSyncExternalStore(subscribeNever, isApplePlatform, () => false)
+  const promptRef = useRef<HTMLTextAreaElement>(null)
+
+  // The keyboard shrinks the layout on a phone, and the pinned dock moves up
+  // over the prompt field. The focus then sits under the dock. A resize
+  // scrolls the field back into view, and the scroll padding keeps it clear
+  // of the dock. TalkBack on a real phone showed the fault.
+  useEffect(() => {
+    const keepPromptInView = () => {
+      if (document.activeElement === promptRef.current) promptRef.current?.scrollIntoView({ block: "nearest" })
+    }
+    window.addEventListener("resize", keepPromptInView)
+    return () => window.removeEventListener("resize", keepPromptInView)
+  }, [])
   const popupBlocked = blockedURL !== null && blockedURL === url
   const copyFailed = copyFailedURL !== null && copyFailedURL === url
 
@@ -315,6 +328,7 @@ function PageContent() {
               Prompt
             </label>
             <textarea
+              ref={promptRef}
               id="prompt-input"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
