@@ -6,6 +6,7 @@ import {
   resolveOpenAction,
   MAX_SAFE_URL_LENGTH,
 } from "../../src/lib/providers"
+import type { Feature, ProviderId } from "../../src/lib/providers"
 
 describe("getProvider", () => {
   test("resolves every declared provider by id", () => {
@@ -114,18 +115,29 @@ describe("resolveOpenAction", () => {
 
   test("opens the generated URL directly when it's short enough", () => {
     const url = provider.buildURL("hello", "", false)
-    expect(resolveOpenAction(url, provider)).toEqual({
+    expect(resolveOpenAction(url)).toEqual({
       targetURL: url,
       shouldCopyPrompt: false,
     })
   })
 
-  test("falls back to the provider's base URL and a clipboard copy when the URL is too long", () => {
-    const url = provider.buildURL("a".repeat(8000), "", false)
-    expect(resolveOpenAction(url, provider)).toEqual({
-      targetURL: provider.baseURL,
-      shouldCopyPrompt: true,
-    })
+  test("a link that is too long drops only the prompt and keeps every setting", () => {
+    // The fallback opened the bare home page, so a temporary chat became a
+    // normal chat that the AI app saves to the history.
+    const long = "a".repeat(8000)
+    const cases: [ProviderId, Feature, boolean, string][] = [
+      ["chatgpt", "search", true, "https://chatgpt.com/?hints=search&temporary-chat=true"],
+      ["chatgpt", "", false, "https://chatgpt.com/"],
+      ["claude", "", true, "https://claude.ai/new?incognito"],
+      ["perplexity", "", false, "https://www.perplexity.ai/search"],
+    ]
+    for (const [id, feature, temporary, expected] of cases) {
+      const target = getProvider(id)
+      expect(resolveOpenAction(target.buildURL(long, feature, temporary))).toEqual({
+        targetURL: expected,
+        shouldCopyPrompt: true,
+      })
+    }
   })
 })
 

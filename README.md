@@ -9,7 +9,7 @@ You can try out the app now at https://cr2007.github.io/aichat-url-maker
 Why this helps
 - Create, copy, and open URLs that prefill prompts in your favourite AI chat app for sharing or quick reuse.
 - Adds optional flags (features, temporary chat) to the URL so workflows can be shared precisely.
-- Falls back to copying the prompt and opening the provider directly when it is too long to fit in a link.
+- Falls back to copying the prompt and opening the provider with the same settings when it is too long to fit in a link.
 - Follows your system light and dark appearance. There is no second setting to keep in sync.
 - Lets you tap a provider or drag between providers. The drag works with a mouse, a pen and a touch screen.
 - Shows the page from the first response, so it appears quickly on a slow connection.

@@ -48,8 +48,8 @@ Example: `https://www.perplexity.ai/search?q=Explain+TCP+slow+start`
 ## Length limit
 
 Keep the URL at or below 7500 characters. Some servers answer a longer
-request line with HTTP 431. Above that limit, open the base URL and put the
-prompt on the clipboard instead.
+request line with HTTP 431. Above that limit, leave out the q parameter, keep the other parameters, and
+put the prompt on the clipboard instead.
 
 ## Source
 

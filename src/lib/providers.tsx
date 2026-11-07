@@ -240,6 +240,12 @@ export function isUrlTooLong(url: string): boolean {
   return url.length > MAX_SAFE_URL_LENGTH
 }
 
+/** The prompt parameter and the separator after it, at any place in a link. */
+const PROMPT_PARAM = /([?&])q=[^&]*&?/
+
+/** A `?` or `&` left at the end of a link with no parameter after it. */
+const TRAILING_SEPARATOR = /[?&]$/
+
 /** Where {@link resolveOpenAction} decided to navigate, and whether the prompt needs a clipboard copy first. */
 export interface OpenAction {
   /** The URL that should be opened in a new tab. */
@@ -249,19 +255,17 @@ export interface OpenAction {
 }
 
 /**
- * Decides what "Open in {provider}" should do for a given prompt URL.
- *
- * When the URL is short enough, it opens directly. When it's too long to
- * fit safely in a URL (see {@link isUrlTooLong}), the caller should copy the
- * prompt to the clipboard instead and open the provider's bare homepage, so
- * the user can paste the prompt in once the page loads.
+ * Decides what "Open in {provider}" does. A short link opens as it is. A link
+ * that is too long opens without the prompt, which the caller copies; every
+ * other setting stays, so a temporary chat stays temporary.
  *
  * @param url - The fully-built provider URL for the current prompt.
- * @param provider - The target provider config.
  * @returns The URL to open, and whether the prompt should be copied first.
  */
-export function resolveOpenAction(url: string, provider: ProviderConfig): OpenAction {
-  return isUrlTooLong(url)
-    ? { targetURL: provider.baseURL, shouldCopyPrompt: true }
-    : { targetURL: url, shouldCopyPrompt: false }
+export function resolveOpenAction(url: string): OpenAction {
+  if (!isUrlTooLong(url)) return { targetURL: url, shouldCopyPrompt: false }
+
+  // Step 1.1: take out only the prompt. The other parameters are the settings.
+  const targetURL = url.replace(PROMPT_PARAM, "$1").replace(TRAILING_SEPARATOR, "")
+  return { targetURL, shouldCopyPrompt: true }
 }

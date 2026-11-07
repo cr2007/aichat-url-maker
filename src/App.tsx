@@ -280,8 +280,8 @@ function PageContent() {
     // Step 1.1: do nothing if there is no prompt.
     if (!url) return
 
-    // Step 1.2: select the full URL or the home page of the provider.
-    const { targetURL, shouldCopyPrompt } = resolveOpenAction(url, provider)
+    // Step 1.2: select the full link, or the link without the prompt.
+    const { targetURL, shouldCopyPrompt } = resolveOpenAction(url)
 
     // Step 1.3: start the copy. Do not wait for it here. `window.open` needs
     // the gesture that started this handler, and an `await` gives that up.
@@ -297,7 +297,7 @@ function PageContent() {
     // Step 1.4: open the tab. Record the URL if the browser blocks the tab.
     const opened = window.open(targetURL, "_blank")
     setBlockedURL(opened ? null : url)
-  }, [url, trimmedPrompt, provider])
+  }, [url, trimmedPrompt])
 
   /**
    * Selects a feature, or clears it.
