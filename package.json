@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && bun run scripts/prerender.tsx",
+    "build": "bun check && vite build && bun run scripts/prerender.tsx",
     "build:nossg": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

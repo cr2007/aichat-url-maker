@@ -230,7 +230,7 @@ bun run build
 ```
 
 - Output directory: `dist/`
-- `bun run build` runs `vite build` and then `scripts/prerender.tsx`. Use `bun run build:nossg` to skip the prerender.
+- `bun run build` runs `bun check` (the type check, about 60ms against 1.4s for `tsc -b`), then `vite build`, then `scripts/prerender.tsx`. `bun run build:nossg` skips the prerender and keeps `tsc -b`, so it still runs under Node. `bun check` follows TypeScript 7, which removed `baseUrl`, so the tsconfig files set `paths` alone.
 - When deployed to GitHub Pages, the Vite base path comes from the `GITHUB_PAGES` and `GITHUB_REPO` environment variables. `BASE_PATH` in `scripts/prerender-document.ts` holds that logic. `vite.config.ts` sets the Vite base from it, and the prerender step takes it off again with `resolveAssetPath`. Do not hardcode the value and do not copy the logic into a second file. Pages serves the site from a subdirectory, so every absolute asset URL carries the repository name while the file sits at the root of `dist/`. That module imports nothing, so the config can read it without loading the build tools.
 
 Three workflows live in `.github/workflows/`:
