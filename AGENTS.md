@@ -62,6 +62,7 @@ https://cr2007.github.io/aichat-url-maker
 ## Tech Stack
 
 - React 19.2, pinned with `~`: 19.3 adds about 8 kB to the gzipped bundle and fixes nothing the app needs
+- `overrides` in `package.json` lifts `glob` to 14 inside `workbox-build`, past an advisory. Two dev-only advisories stay: `deepmerge` has no fixed version, and ESLint needs `minimatch` 3. Check with `bun audit`
 - Vite
 - TypeScript (strict mode)
 - Bun (required runtime and package manager -- do not use Node.js or npm)
