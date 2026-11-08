@@ -550,7 +550,7 @@ describe("the dock on a phone, worst cases", () => {
       touch: true,
       width: 412,
       height: 915,
-      initScript: SHARE_STUB + ";Object.defineProperty(navigator, \"clipboard\", { value: { writeText: async () => {} } })",
+      initScript: SHARE_STUB + ";Object.defineProperty(navigator, \"clipboard\", { value: { writeText: async () => {} }, configurable: true })",
     })
     await fillPrompt(phone.page)
     const widths = () =>
@@ -568,6 +568,17 @@ describe("the dock on a phone, worst cases", () => {
     await phone.page.waitForFunction((sel) => document.querySelector(sel)?.textContent === "", status, { timeout: 4000 })
     await settle(phone.page)
     expect(await widths()).toEqual(before)
+
+    // A failure once printed a long line inside the bar, which covered the link.
+    await phone.page.evaluate(() => {
+      Object.defineProperty(navigator, "clipboard", { value: { writeText: () => Promise.reject(new Error("denied")) } })
+      document.execCommand = () => false
+    })
+    await phone.page.click("#url-preview button[aria-label=\"Copy link\"]")
+    await phone.page.waitForFunction((sel) => document.querySelector(sel)?.textContent !== "", status)
+    await settle(phone.page)
+    expect(await widths()).toEqual(before)
+    expect(await phone.page.textContent("#url-preview [data-shown=true]")).toBe("Failed")
     await phone.close()
   })
 

@@ -4,7 +4,7 @@ import { cn, copyText } from "@/lib/utils"
 
 interface CopyButtonProps {
   value: string
-  /** Hide the success line. The button itself then shows the result. */
+  /** Keep the status line for screen readers only. The button shows the result. */
   quiet?: boolean
   /** Show the word "Copy" next to the icon. An icon alone is not clear to everyone. */
   label?: boolean
@@ -20,9 +20,9 @@ interface CopyButtonProps {
  * and a warning when the copy fails. A failure is always in view.
  *
  * @param props.value - The text to copy.
- * @param props.quiet - Hide the success line from view. A screen reader still
- *   hears it.
- * @param props.label - Show "Copy", then "Copied", next to the icon.
+ * @param props.quiet - Keep the status line for screen readers only, for a
+ *   tight bar. The label then shows "Copied" or "Failed".
+ * @param props.label - Show "Copy", "Copied" or "Failed" next to the icon.
  * @param props.disabled - Turn the button off.
  * @param props.className - Classes for the button.
  * @returns The button and its status line.
@@ -85,14 +85,14 @@ function CopyButton({ value, quiet = false, label = false, disabled = false, cla
         ) : (
           <Copy className="size-4" />
         )}
-        {/* Both words share one grid cell, so the wider one sets the width
+        {/* The words share one grid cell, so the widest one sets the width
             and nothing moves on a copy. The shown word fades in. */}
         {label && (
           <span aria-hidden="true" className="grid text-left">
-            {["Copy", "Copied"].map((word) => (
+            {["Copy", "Copied", "Failed"].map((word) => (
               <span
                 key={word}
-                data-shown={word === (isCopied ? "Copied" : "Copy")}
+                data-shown={word === (isCopied ? "Copied" : failed ? "Failed" : "Copy")}
                 className="[grid-area:1/1] transition-[opacity,filter] duration-150 ease-out data-[shown=false]:opacity-0 data-[shown=false]:blur-[2px]"
               >
                 {word}
@@ -101,19 +101,19 @@ function CopyButton({ value, quiet = false, label = false, disabled = false, cla
           </span>
         )}
       </button>
-      {/* The result is announced and stays in the layout, so it cannot cover
-          the label above the field. A live region with no role: TalkBack
-          stopped on an empty role="status" and said "status". */}
+      {/* The result is announced. In a tight bar (quiet) the line is for
+          screen readers only: shown, it widened the bar over the link. A live
+          region with no role: TalkBack said "status" on an empty one. */}
       <p
         aria-live="polite"
         aria-atomic="true"
         className={cn(
           "mt-1.5 basis-full text-right text-[0.8125rem]",
           failed ? "text-destructive" : "text-muted-foreground",
-          (failed ? false : quiet || !isCopied) && "sr-only"
+          (quiet || !(isCopied || failed)) && "sr-only"
         )}
       >
-        {isCopied ? "Link copied" : failed ? "Could not copy. Select the link and copy it." : ""}
+        {isCopied ? "Link copied" : failed ? (quiet ? "Could not copy the link." : "Could not copy. Select the link and copy it.") : ""}
       </p>
     </>
   )
