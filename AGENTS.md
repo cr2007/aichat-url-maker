@@ -61,7 +61,7 @@ https://cr2007.github.io/aichat-url-maker
 
 ## Tech Stack
 
-- React 19
+- React 19.2, pinned with `~`: 19.3 adds about 8 kB to the gzipped bundle and fixes nothing the app needs
 - Vite
 - TypeScript (strict mode)
 - Bun (required runtime and package manager -- do not use Node.js or npm)
