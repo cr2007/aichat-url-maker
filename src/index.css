@@ -8,13 +8,17 @@
    appearance setting." */
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
-/* This variant uses any-hover, not the Tailwind default hover. A stylus can
-   then show hover styles on a touch device. A finger tap does not. */
+/* Hover styles need a pointer that can hover. A mouse or a trackpad reports
+   any-hover. A pen on Android reports none, but the browser still sets :hover,
+   so main.tsx marks the root while a pen hovers. A finger tap does neither. */
 @custom-variant hover {
   @media (any-hover: hover) {
     &:hover {
       @slot;
     }
+  }
+  :root[data-pen-hover] &:hover {
+    @slot;
   }
 }
 

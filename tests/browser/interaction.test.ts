@@ -774,6 +774,24 @@ describe("plain use for every reader", () => {
     await opened.close()
   })
 
+  test("a hovering pen on a touch screen gets the hover style, and a finger tap clears it", async () => {
+    // Android reports any-hover: none for a pen, so the hover styles never
+    // showed, though the browser sets :hover while the pen hovers.
+    const phone = await openPage({ touch: true, width: 412, height: 800 })
+    await fillPrompt(phone.page)
+    const fill = () => phone.page.evaluate(() => getComputedStyle(document.getElementById("open-in-provider")!).backgroundColor)
+    const rest = await fill()
+    const box = (await phone.page.locator("#open-in-provider").boundingBox())!
+    const session = await phone.context.newCDPSession(phone.page)
+    await session.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x + box.width / 2, y: box.y + box.height / 2, pointerType: "pen" })
+    await settle(phone.page)
+    expect(await fill()).not.toBe(rest)
+    await phone.page.touchscreen.tap(20, 20)
+    await settle(phone.page)
+    expect(await phone.page.evaluate(() => document.documentElement.hasAttribute("data-pen-hover"))).toBe(false)
+    await phone.close()
+  })
+
   test("the keys show for a mouse at any width, and on a touch screen after a physical key", async () => {
     // The keys showed only from 1024px, so a narrow desktop window lost them,
     // and a phone with a keyboard never got them. Width says nothing about input.
