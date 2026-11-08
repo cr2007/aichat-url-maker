@@ -135,14 +135,38 @@ export async function openPage(options: PageOptions = {}): Promise<OpenPage> {
 }
 
 /**
- * Types a prompt, which makes the URL and the open button appear.
+ * Types a prompt and waits until the link shows it. The link, the counter and
+ * the dock render from one deferred value, so they are all ready then.
  *
  * @param page - The page to type into.
  * @param prompt - The text for the prompt field.
  */
 export async function fillPrompt(page: Page, prompt = SAMPLE_PROMPT): Promise<void> {
   await page.fill("#prompt-input", prompt)
-  await page.waitForTimeout(250)
+  // Step 1.1: a fixed wait raced the deferred render on a slow machine.
+  await page.waitForFunction((expected) => {
+    const link = (document.getElementById("generated-url") as HTMLTextAreaElement | null)?.value ?? ""
+    if (!expected) return link === ""
+    try {
+      return new URL(link).searchParams.get("q") === expected
+    } catch {
+      return false
+    }
+  }, prompt.trim())
+}
+
+/**
+ * Waits until no CSS transition or animation runs, then for two frames, so a
+ * test reads the end state of a fold, a slide or a deferred render.
+ *
+ * @param page - The page to wait on.
+ */
+export async function settle(page: Page): Promise<void> {
+  // Step 1.1: a transition in its delay also reports "running", so a delayed
+  // change is waited for too.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"))
+  // Step 1.2: two frames let React commit a deferred value.
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
 }
 
 /**

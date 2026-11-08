@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
-import { fillPrompt, openPage, startHarness, stopHarness, OVERSIZED_PROMPT } from "./harness"
+import { fillPrompt, openPage, startHarness, stopHarness, OVERSIZED_PROMPT, settle } from "./harness"
 
 /** The widths that the layout must hold, in pixels. */
 const WIDTHS = [320, 375, 414, 768, 1024]
@@ -17,7 +17,7 @@ describe("layout", () => {
       const opened = await openPage({ width })
       await fillPrompt(opened.page)
       await opened.page.click('#feature-picker button:has-text("Deep Research")')
-      await opened.page.waitForTimeout(300)
+      await settle(opened.page)
 
       const overflow = await opened.page.evaluate(() => {
         const wide: string[] = []
@@ -78,7 +78,6 @@ describe("text at 200 percent", () => {
       document.documentElement.style.fontSize = "32px"
     })
     await fillPrompt(opened.page)
-    await opened.page.waitForTimeout(300)
 
     const result = await opened.page.evaluate(() => ({
       scrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -200,32 +199,42 @@ describe("the prerendered document", () => {
   })
 })
 
-describe("the first load", () => {
-  test("using the page fetches no more code", async () => {
-    // Everything the page needs arrives with the first load. No control may
-    // reach for another script when a person uses it.
+describe("a full pass", () => {
+  test("it fetches no more code, stores nothing and reports no errors", async () => {
     const opened = await openPage()
     const fetched: string[] = []
     opened.page.on("request", (request) => fetched.push(request.url()))
-
     await fillPrompt(opened.page)
     await opened.page.click('#feature-picker button:has-text("Search")')
     await opened.page.click("#temporary-chat-section")
     await opened.page.click("#how-it-works-toggle")
-    await opened.page.waitForTimeout(400)
+    await settle(opened.page)
 
+    // Everything the page needs arrives with the first load. No control may
+    // reach for another script when a person uses it.
     expect(fetched.filter((url) => url.endsWith(".js"))).toEqual([])
+    // The app keeps no state between visits and sets no cookie. See
+    // `AGENTS.md > Core Behavior`.
+    const stored = await opened.page.evaluate(() => ({
+      local: Object.keys(localStorage),
+      session: Object.keys(sessionStorage),
+      cookie: document.cookie,
+    }))
+    expect(stored).toEqual({ local: [], session: [], cookie: "" })
+    expect(opened.errors).toEqual([])
     await opened.close()
   })
 })
 
 describe("the console greeting", () => {
-  test("it prints the art once", async () => {
+  test("it prints the art once and fetches nothing of its own", async () => {
     const opened = await openPage()
     const messages: { text: string; args: number }[] = []
+    const fetched: string[] = []
     opened.page.on("console", (message) =>
       messages.push({ text: message.text(), args: message.args().length })
     )
+    opened.page.on("request", (request) => fetched.push(request.url()))
     await opened.page.reload({ waitUntil: "networkidle" })
     await opened.page.waitForTimeout(400)
 
@@ -235,43 +244,9 @@ describe("the console greeting", () => {
     expect(banner[0].args).toBe(2)
     // The greeting must not raise an error of its own.
     expect(opened.errors).toEqual([])
-    await opened.close()
-  })
-
-  test("it fetches nothing of its own", async () => {
     // The art is text in the bundle. Chrome does not load a background image
     // from a console style, so a picture file would only add a dead request.
-    const opened = await openPage()
-    const fetched: string[] = []
-    opened.page.on("request", (request) => fetched.push(request.url()))
-    await opened.page.reload({ waitUntil: "networkidle" })
-    await fillPrompt(opened.page)
-    await opened.page.waitForTimeout(400)
-
     expect(fetched.filter((url) => /\.(webp|png|jpe?g|gif)$/.test(url))).toEqual([])
-    await opened.close()
-  })
-})
-
-describe("storage", () => {
-  test("a full pass stores nothing", async () => {
-    // The app keeps no state between visits and sets no cookie. See
-    // `AGENTS.md > Core Behavior`.
-    const opened = await openPage()
-    await fillPrompt(opened.page)
-    await opened.page.click('#feature-picker button:has-text("Search")')
-    await opened.page.click("#temporary-chat-section")
-    await opened.page.click("#how-it-works-toggle")
-    await opened.page.waitForTimeout(300)
-
-    const stored = await opened.page.evaluate(() => ({
-      local: Object.keys(localStorage),
-      session: Object.keys(sessionStorage),
-      cookie: document.cookie,
-    }))
-    expect(stored.local).toEqual([])
-    expect(stored.session).toEqual([])
-    expect(stored.cookie).toBe("")
     await opened.close()
   })
 })
@@ -280,7 +255,6 @@ describe("the oversized prompt", () => {
   test("the button says what it will do before it is pressed", async () => {
     const opened = await openPage()
     await fillPrompt(opened.page, OVERSIZED_PROMPT)
-    await opened.page.waitForTimeout(400)
 
     const label = await opened.page.evaluate(
       () => document.getElementById("open-in-provider")?.textContent ?? ""
@@ -354,7 +328,7 @@ describe("a provider without a control", () => {
   test("the row folds away, leaves the tab order, and comes back", async () => {
     const opened = await openPage({ width: 760 })
     await opened.page.click('#provider-picker [role="radio"]:has-text("Perplexity")')
-    await opened.page.waitForTimeout(450)
+    await settle(opened.page)
 
     const folded = await opened.page.evaluate(() => ({
       features: document.getElementById("feature-collapse")!.getBoundingClientRect().height,
@@ -367,7 +341,7 @@ describe("a provider without a control", () => {
     expect(folded.featuresInert && folded.temporaryInert).toBe(true)
 
     await opened.page.click('#provider-picker [role="radio"]:has-text("ChatGPT")')
-    await opened.page.waitForTimeout(450)
+    await settle(opened.page)
     const open = await opened.page.evaluate(() => ({
       features: document.getElementById("feature-collapse")!.getBoundingClientRect().height,
       inert: document.getElementById("feature-collapse")!.hasAttribute("inert"),
@@ -382,7 +356,7 @@ describe("a provider without a control", () => {
     // fold, because the row read the current provider.
     const opened = await openPage({ width: 760 })
     await opened.page.click('#provider-picker [role="radio"]:has-text("Perplexity")')
-    await opened.page.waitForTimeout(450)
+    await settle(opened.page)
     const text = await opened.page.evaluate(
       () => document.getElementById("temporary-chat-section")!.textContent
     )
@@ -430,7 +404,7 @@ describe("the dock on a phone", () => {
     const tap = () => phone.page.touchscreen.tap(line.x + 40, line.y + line.height / 2)
 
     await tap()
-    await phone.page.waitForTimeout(450)
+    await settle(phone.page)
     const open = await rects()
     expect(await toggle.getAttribute("aria-expanded")).toBe("true")
     expect(await phone.page.textContent("#url-full")).toContain("Summarize this paper.")
@@ -440,14 +414,14 @@ describe("the dock on a phone", () => {
     expect(await phone.page.evaluate(() => document.activeElement?.id)).toBe("url-preview-toggle")
 
     await tap()
-    await phone.page.waitForTimeout(450)
+    await settle(phone.page)
     expect(await toggle.getAttribute("aria-expanded")).toBe("false")
     expect((await rects()).text).toBeLessThan(25)
 
     await tap()
-    await phone.page.waitForTimeout(450)
+    await settle(phone.page)
     await phone.page.keyboard.press("Escape")
-    await phone.page.waitForTimeout(450)
+    await settle(phone.page)
     expect(await toggle.getAttribute("aria-expanded")).toBe("false")
     await phone.close()
   })
@@ -460,10 +434,10 @@ describe("the dock on a phone", () => {
     const toggle = phone.page.locator("#url-preview-toggle")
     const line = (await toggle.boundingBox())!
     await phone.page.touchscreen.tap(line.x + 40, line.y + line.height / 2)
-    await phone.page.waitForTimeout(400)
+    await settle(phone.page)
     expect(await toggle.getAttribute("aria-expanded")).toBe("true")
     await phone.page.touchscreen.tap(200, 40)
-    await phone.page.waitForTimeout(400)
+    await settle(phone.page)
     expect(await toggle.getAttribute("aria-expanded")).toBe("false")
     await phone.close()
   })
@@ -501,11 +475,11 @@ describe("the dock on a phone, worst cases", () => {
     const line = (await phone.page.locator("#url-preview-toggle").boundingBox())!
     const tap = () => phone.page.touchscreen.tap(line.x + 30, line.y + line.height / 2)
     await tap()
-    await phone.page.waitForTimeout(450)
+    await settle(phone.page)
     await tap()
     await phone.page.waitForTimeout(60)
     await tap()
-    await phone.page.waitForTimeout(450)
+    await settle(phone.page)
     expect(await phone.page.getAttribute("#url-preview-toggle", "aria-expanded")).toBe("true")
     expect(await phone.page.evaluate(() => document.getElementById("url-full")!.getBoundingClientRect().height)).toBeGreaterThan(40)
     await phone.close()
@@ -540,7 +514,7 @@ describe("the dock on a phone, worst cases", () => {
     await phone.page.touchscreen.tap(line.x + 30, line.y + line.height / 2)
     await phone.page.waitForTimeout(40)
     expect((await sizes()).bar).toBe("none")
-    await phone.page.waitForTimeout(500)
+    await settle(phone.page)
     const open = await sizes()
     await phone.page.keyboard.press("Escape")
     await phone.page.waitForTimeout(30)

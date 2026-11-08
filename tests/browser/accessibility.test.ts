@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
-import { fillPrompt, openPage, startHarness, stopHarness, OVERSIZED_PROMPT } from "./harness"
+import { fillPrompt, openPage, startHarness, stopHarness, OVERSIZED_PROMPT, settle } from "./harness"
 import { readContrast, readTargets } from "./measure"
 
 /** The smallest target that WCAG 2.2 AA accepts, in pixels. */
@@ -18,7 +18,7 @@ for (const colourScheme of ["light", "dark"] as const) {
       const opened = await openPage({ colorScheme: colourScheme })
       await fillPrompt(opened.page)
       await opened.page.click('#feature-picker button:has-text("Search")')
-      await opened.page.waitForTimeout(300)
+      await settle(opened.page)
 
       const readings = await readContrast(opened.page)
       const failures = readings.filter((r) => r.ratio < r.required)
@@ -34,7 +34,6 @@ for (const colourScheme of ["light", "dark"] as const) {
       // This message once used a hard-coded amber that measured 3.06:1.
       const opened = await openPage({ colorScheme: colourScheme })
       await fillPrompt(opened.page, OVERSIZED_PROMPT)
-      await opened.page.waitForTimeout(300)
 
       const reading = (await readContrast(opened.page)).find((r) => r.what === "prompt-meta")
       expect(reading).toBeDefined()
@@ -45,23 +44,14 @@ for (const colourScheme of ["light", "dark"] as const) {
 }
 
 describe("target sizes", () => {
-  test("every control meets the WCAG minimum", async () => {
+  test("every control meets the WCAG minimum and the HIG target", async () => {
     const opened = await openPage()
     await fillPrompt(opened.page)
+    const targets = await readTargets(opened.page)
+    const show = (t: (typeof targets)[number]) => `${t.what} ${t.width}x${t.height}`
 
-    const small = (await readTargets(opened.page)).filter(
-      (t) => t.width < WCAG_TARGET || t.height < WCAG_TARGET
-    )
-    expect(small.map((t) => `${t.what} ${t.width}x${t.height}`)).toEqual([])
-    await opened.close()
-  })
-
-  test("every control meets the HIG target", async () => {
-    const opened = await openPage()
-    await fillPrompt(opened.page)
-
-    const small = (await readTargets(opened.page)).filter((t) => t.height < HIG_TARGET)
-    expect(small.map((t) => `${t.what} ${t.width}x${t.height}`)).toEqual([])
+    expect(targets.filter((t) => t.width < WCAG_TARGET || t.height < WCAG_TARGET).map(show)).toEqual([])
+    expect(targets.filter((t) => t.height < HIG_TARGET).map(show)).toEqual([])
     await opened.close()
   })
 })
@@ -184,7 +174,7 @@ describe("forced colors", () => {
     const opened = await openPage({ forcedColors: "active" })
     await fillPrompt(opened.page)
     await opened.page.click('#feature-picker button:has-text("Search")')
-    await opened.page.waitForTimeout(300)
+    await settle(opened.page)
 
     const state = await opened.page.evaluate(() => {
       const fill = (element: Element) => getComputedStyle(element).backgroundColor
@@ -221,7 +211,7 @@ describe("hover on the open button", () => {
       const lightness = (colour: string) => Number(/^okl(?:ab|ch)\(([\d.]+)/.exec(colour)?.[1])
       const rest = await read()
       await opened.page.hover("#open-in-provider")
-      await opened.page.waitForTimeout(300)
+      await settle(opened.page)
       const hover = await read()
       expect(hover.fill).not.toContain("/")
       if (colorScheme === "light") expect(lightness(hover.fill)).toBeLessThan(lightness(rest.fill))

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 
-import { fillPrompt, generatedUrl, openPage, startHarness, stopHarness, OVERSIZED_PROMPT } from "./harness"
+import { fillPrompt, generatedUrl, openPage, startHarness, stopHarness, OVERSIZED_PROMPT, settle } from "./harness"
 
 beforeAll(startHarness)
 afterAll(stopHarness)
@@ -31,11 +31,11 @@ describe("the feature pills", () => {
     await fillPrompt(opened.page)
 
     await opened.page.click('#feature-picker button:has-text("Deep Research")')
-    await opened.page.waitForTimeout(200)
+    await settle(opened.page)
     expect(await generatedUrl(opened.page)).toContain("hints=research")
 
     await opened.page.click('#feature-picker button:has-text("Deep Research")')
-    await opened.page.waitForTimeout(200)
+    await settle(opened.page)
     expect(await generatedUrl(opened.page)).not.toContain("hints=")
     await opened.close()
   })
@@ -45,7 +45,7 @@ describe("the feature pills", () => {
     await fillPrompt(opened.page)
     await opened.page.click('#feature-picker button:has-text("Canvas")')
     await opened.page.click('#feature-picker button:has-text("Search")')
-    await opened.page.waitForTimeout(200)
+    await settle(opened.page)
 
     const pressed = await opened.page.evaluate(() =>
       [...document.querySelectorAll("#feature-picker button")]
@@ -82,11 +82,11 @@ describe("the temporary chat row", () => {
 
     // Press the description, which is the furthest point from any icon.
     await opened.page.mouse.click(box.x + 60, box.y + box.height - 12)
-    await opened.page.waitForTimeout(250)
+    await settle(opened.page)
     expect(await generatedUrl(opened.page)).toContain("temporary-chat=true")
 
     await opened.page.mouse.click(box.x + 60, box.y + box.height - 12)
-    await opened.page.waitForTimeout(250)
+    await settle(opened.page)
     expect(await generatedUrl(opened.page)).not.toContain("temporary-chat=true")
     await opened.close()
   })
@@ -104,7 +104,7 @@ describe("the provider control", () => {
     await opened.page.mouse.down()
     await opened.page.mouse.move(last.x + last.width / 2, first.y + first.height / 2, { steps: 12 })
     await opened.page.mouse.up()
-    await opened.page.waitForTimeout(350)
+    await settle(opened.page)
 
     expect(await generatedUrl(opened.page)).toContain("perplexity.ai")
     await opened.close()
@@ -116,7 +116,7 @@ describe("the provider control", () => {
     const opened = await openPage()
     await fillPrompt(opened.page)
     await opened.page.click('#provider-picker [role="radio"]:has-text("Claude")')
-    await opened.page.waitForTimeout(250)
+    await settle(opened.page)
     expect(await generatedUrl(opened.page)).toContain("claude.ai")
     await opened.close()
   })
@@ -130,7 +130,7 @@ describe("the provider control", () => {
     await opened.page.mouse.down()
     await opened.page.mouse.move(first.x + first.width / 2 + 30, first.y + first.height / 2, { steps: 6 })
     await opened.page.mouse.up()
-    await opened.page.waitForTimeout(350)
+    await settle(opened.page)
 
     expect(await generatedUrl(opened.page)).toContain("chatgpt.com")
     await opened.close()
@@ -142,7 +142,7 @@ describe("the provider control", () => {
 
     await opened.page.focus('#provider-picker [role="radio"][aria-checked="true"]')
     await opened.page.keyboard.press("ArrowRight")
-    await opened.page.waitForTimeout(200)
+    await settle(opened.page)
     expect(await generatedUrl(opened.page)).toContain("claude.ai")
 
     // One tab stop: Tab leaves the group rather than moving inside it.
@@ -161,16 +161,16 @@ describe("provider settings survive a provider change", () => {
     await fillPrompt(opened.page)
     await opened.page.click('#feature-picker button:has-text("Deep Research")')
     await opened.page.click("#temporary-chat-section")
-    await opened.page.waitForTimeout(250)
+    await settle(opened.page)
 
     await opened.page.click('#provider-picker [role="radio"]:has-text("Perplexity")')
-    await opened.page.waitForTimeout(250)
+    await settle(opened.page)
     const away = await generatedUrl(opened.page)
     expect(away).not.toContain("hints=")
     expect(away).not.toContain("temporary-chat=true")
 
     await opened.page.click('#provider-picker [role="radio"]:has-text("ChatGPT")')
-    await opened.page.waitForTimeout(250)
+    await settle(opened.page)
     const back = await generatedUrl(opened.page)
     expect(back).toContain("hints=research")
     expect(back).toContain("temporary-chat=true")
@@ -259,19 +259,6 @@ describe("the opened tab", () => {
     })
     await opened.page.click("#open-in-provider")
     expect(await opened.page.isVisible("#popup-blocked-notice")).toBe(true)
-    await opened.close()
-  })
-})
-
-describe("the whole page", () => {
-  test("it reports no errors during a full pass", async () => {
-    const opened = await openPage()
-    await fillPrompt(opened.page)
-    await opened.page.click('#feature-picker button:has-text("Search")')
-    await opened.page.click("#temporary-chat-section")
-    await opened.page.click("#how-it-works-toggle")
-    await opened.page.waitForTimeout(400)
-    expect(opened.errors).toEqual([])
     await opened.close()
   })
 })

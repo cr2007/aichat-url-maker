@@ -207,6 +207,11 @@ Rules for a browser test:
 - Each test opens its own context, so no test sees the storage of another.
 - `openPage` collects every console error. A test can then assert that a flow
   reported none.
+- Wait on a state, not on a time. `fillPrompt` waits until the link holds
+  the prompt, and `settle` waits until no transition runs. A fixed
+  `waitForTimeout` raced the deferred render on a slow machine. Keep a fixed
+  wait only where the time is the behaviour: a tooltip delay, a long press,
+  or a sample in the middle of a motion.
 - Keep `--timeout 30000` on `test:browser`. A browser test needs more than the
   5 second default of `bun test`. When one test passes that default, it takes
   the shared browser down with it, and every test after it fails with
