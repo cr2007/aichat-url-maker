@@ -195,7 +195,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 | File | Covers |
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, the selected states in forced colors, a hover on the open button that raises the contrast with no glow, and a prompt field edge of 3:1 in both appearances |
-| `tests/browser/interaction.test.ts` | The example prompt that matches the placeholder and leaves on the first letter, an opened tab with no `window.opener` and the blocked popup message, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
+| `tests/browser/interaction.test.ts` | The example prompt that matches the placeholder and leaves on the first letter, an opened tab with no `window.opener` and the blocked popup message, a blocked tab with a link that opens the app and no notice after an undo, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
 | `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, no scrollbar in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
@@ -636,6 +636,9 @@ A feature pill has a tooltip that describes the feature. The text is in
   tooltip is in the page only while it is open, so a pill must not point
   `aria-describedby` at it.
 - A tooltip fades in and leaves at once. It has no zoom, no slide and no exit.
+  The fade is the native `tooltip-in` keyframe in `index.css`, so the app needs
+  no animation library. The tooltip is `@radix-ui/react-tooltip`, not the
+  `radix-ui` package of every primitive.
   The closed state has `animate-none`. Without it the enter animation starts
   again on close, and Radix keeps the old tooltip in the page beside the new
   one. The box fits its text: `text-pretty`, not `text-balance`, because a
@@ -743,12 +746,11 @@ too long. This mirrors the approach used by
 `resend/react-email` (PR #3404) and avoids HTTP 431 errors from servers that
 cap request line length.
 
-`handleOpenInProvider` also handles a blocked popup: if `window.open` returns
-`null`, App.tsx shows a message asking the user to allow popups and retry.
-The notice is derived state (the URL it was raised for, compared against the
-current URL) rather than a value that needs manual resetting, so it clears
-itself automatically once the prompt, provider, feature, or temporary-chat
-setting changes.
+`handleOpenInProvider` also handles a blocked new tab: if `window.open`
+returns `null`, the notice says so and gives a link to the same address. A
+link that the person clicks is never blocked as a pop-up. Each notice keeps
+the link it was raised for, and any change of the link clears it, so an undo
+back to the same prompt does not bring an old notice back.
 
 The opened tab must not get `window.opener`, a handle that can send this tab
 to another address. `"noopener"` would make `window.open` return `null` and
