@@ -97,6 +97,8 @@ https://cr2007.github.io/aichat-url-maker
 ## Project Structure
 
 ```
+docs/
+└─ demo-light.gif, demo-dark.gif  # The README demo, one per appearance
 public/
 └─ llms.txt                    # The link grammar, for an agent that finds the site
 scripts/
@@ -789,6 +791,23 @@ hide a blocked popup, so the handler sets `opener` to `null` after the open.
 - Breaking these rules may silently invalidate generated URLs.
 
 ---
+
+## README demo
+
+`docs/demo-light.gif` and `docs/demo-dark.gif` show the core flow: type a
+prompt, turn on Search and Temporary chat, copy the link, open the app. The
+README shows them with `<picture>`, so GitHub picks the one for the reader’s
+appearance. Make them again when the UI changes:
+
+- Record a Playwright take of the production build at 1120x760, one per
+  colour scheme, and log the pointer path with `Date.now()`.
+- Write the log as an OpenScreen `.cursor.json` sidecar next to the video,
+  then `createProject` from the video. A scripted click never moves the real
+  pointer, so the sidecar is what draws the cursor.
+- Set a quiet look (window frame, indigo gradient, default cursor, no zoom),
+  export an MP4, and make the GIF with ffmpeg `palettegen` and
+  `paletteuse=diff_mode=rectangle` at 960px and 15 fps. Each GIF is about
+  1.3 MB.
 
 ## Social Metadata and Favicons
 

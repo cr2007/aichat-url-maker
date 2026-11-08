@@ -2,18 +2,29 @@
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cr2007/aichat-url-maker)
 
-A small web app built in [Vite](https://vite.dev) that builds shareable AI Chat URLs with prefilled prompts and optional feature hints.
+Type a question. Get a link that opens ChatGPT, Claude or Perplexity with it
+ready to send.
 
-You can try out the app now at https://cr2007.github.io/aichat-url-maker
+**Try it:** https://cr2007.github.io/aichat-url-maker
 
-Why this helps
-- Create, copy, and open URLs that prefill prompts in your favourite AI chat app for sharing or quick reuse.
-- Adds optional flags (features, temporary chat) to the URL so workflows can be shared precisely.
-- Falls back to copying the prompt and opening the provider with the same settings when it is too long to fit in a link.
-- Follows your system light and dark appearance. There is no second setting to keep in sync.
-- Lets you tap a provider or drag between providers. The drag works with a mouse, a pen and a touch screen.
-- Shows the page from the first response, so it appears quickly on a slow connection.
-- Shows the link grammar in a table if you have JavaScript off, so you can build a link by hand.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/demo-dark.gif">
+  <img src="docs/demo-light.gif" width="800" alt="Demo: a person types a prompt, turns on Search and Temporary chat, copies the link, and clicks Open in ChatGPT. The link updates with each choice.">
+</picture>
+
+## What it does
+
+- Makes a link that opens your AI chat app with the prompt already typed in.
+  Share it, or keep it to reuse a prompt.
+- Adds a feature (such as Search or Deep Research) and a temporary chat to the
+  link, so the person who opens it gets the same setup.
+- Copies the prompt and opens the app with the same settings when the prompt is
+  too long for a link.
+- Works on a phone, with a pen or a mouse, offline after the first visit, and
+  with JavaScript off, where it shows the link format in a table.
+- Stores nothing and sends nothing. The link is the only output.
+
+To build a link by hand, see the link format in [`public/llms.txt`](public/llms.txt).
 
 ---
 
