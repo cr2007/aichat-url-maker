@@ -2,7 +2,6 @@
 /* Hallmark · pre-emit critique: the open button is the one tinted control; weakest: the link box still animates height, kept on purpose */
 /* Hallmark · waive 23 · the wash is --bg-gradient, a 0.45 alpha indigo tint of the paper · the page wash tints the paper behind the prompt, it is not an accent fill */
 @import "tailwindcss";
-@import "tw-animate-css";
 
 /* The appearance follows the system. The app has no appearance control.
    HIG dark-mode.md > Best practices: "Avoid offering an app-specific
@@ -36,6 +35,11 @@
   font-display: swap;
   src: url("./assets/fonts/instrument-sans-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* A tooltip fades in. It has no zoom, no slide and no exit. */
+@keyframes tooltip-in {
+  from { opacity: 0; }
 }
 
 /* The tick enters from scale 0.9 with opacity. It does not overshoot. */

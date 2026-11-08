@@ -1,6 +1,6 @@
 import * as React from "react"
 import { COARSE_POINTER, cn } from "@/lib/utils"
-import { Tooltip as TooltipPrimitive } from "radix-ui"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 /**
  * How long a finger stays down before the tooltip opens, in milliseconds. The
@@ -248,7 +248,7 @@ function TooltipContent({
         className={cn(
           // A tooltip fades in and leaves at once. It is hover help that a person
           // sees many times, so it has no zoom, no slide and no exit.
-          "z-50 w-fit max-w-64 animate-in select-none rounded-md bg-foreground px-3 py-1.5 text-[0.8125rem] text-pretty text-background duration-125 ease-out fade-in-0",
+          "z-50 w-fit max-w-64 animate-[tooltip-in_125ms_var(--ease-out)] select-none rounded-md bg-foreground px-3 py-1.5 text-[0.8125rem] text-pretty text-background",
           // A tooltip that opens while another one is open or just closed has no
           // animation. A person who sweeps across the pills then sees the
           // descriptions at once.
