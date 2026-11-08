@@ -228,22 +228,11 @@ const KEYCAP_CLASS =
   "inline-flex h-5 min-w-5 items-center justify-center rounded-[0.3125rem] border border-b-2 border-primary-foreground/35 bg-[color-mix(in_oklab,var(--primary),var(--foreground)_22%)] px-1 font-sans text-[0.8125rem] leading-none font-medium data-[pressed=true]:translate-y-px data-[pressed=true]:border-b data-[pressed=true]:bg-[color-mix(in_oklab,var(--primary),var(--foreground)_36%)]"
 
 /**
- * A mouse or a trackpad is connected: a fine pointer that can hover. A pen is
- * fine too, but on Android it reports no hover, so it does not count.
+ * Shows the keycaps when a mouse or a trackpad is connected: a fine pointer
+ * that can hover. A pen is fine too, but on Android it reports no hover, so it
+ * does not count. CSS follows a mouse plugged in later with no script.
  */
-const FINE_POINTER = "(any-pointer: fine) and (any-hover: hover)"
-
-/**
- * Follows the fine pointer query, so a mouse plugged in later shows the keys.
- *
- * @param onChange - Runs when the answer changes.
- * @returns The function that stops the subscription.
- */
-function subscribeFinePointer(onChange: () => void) {
-  const query = window.matchMedia(FINE_POINTER)
-  query.addEventListener("change", onChange)
-  return () => query.removeEventListener("change", onChange)
-}
+const FINE_POINTER_SHOW = "hidden [@media(any-pointer:fine)_and_(any-hover:hover)]:inline-flex"
 
 /**
  * True if a key event comes from a physical keyboard. No browser API reports
@@ -268,8 +257,10 @@ function isPhysicalKey(event: KeyboardEvent) {
  */
 function ShortcutKeys({ apple }: { apple: boolean }) {
   const [held, setHeld] = useState({ mod: false, enter: false })
-  // The server has no pointer, so the prerendered page shows no keys.
-  const finePointer = useSyncExternalStore(subscribeFinePointer, () => window.matchMedia(FINE_POINTER).matches, () => false)
+  // The prerender does not know the platform, so it cannot say Ctrl or
+  // Command. The keys keep their room from the first paint, so the button does
+  // not grow, and show once the client knows.
+  const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false)
   // The page stores nothing, so the proof of a keyboard lasts for this visit.
   const [keyboard, setKeyboard] = useState(false)
 
@@ -297,7 +288,7 @@ function ShortcutKeys({ apple }: { apple: boolean }) {
   }, [apple])
 
   return (
-    <kbd aria-hidden="true" className={cn("ml-1 items-center gap-1", finePointer || keyboard ? "inline-flex" : "hidden")}>
+    <kbd aria-hidden="true" className={cn("ml-1 items-center gap-1", keyboard ? "inline-flex" : FINE_POINTER_SHOW, !hydrated && "invisible")}>
       <kbd data-pressed={held.mod} className={KEYCAP_CLASS}>
         {apple ? "⌘" : "Ctrl"}
       </kbd>

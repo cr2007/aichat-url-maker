@@ -335,7 +335,10 @@ for an expert who makes ten links in a row.
   on-screen keyboard sends key code 229 and an empty `code`, so it is no
   proof (measured on a real Android phone). The proof lasts for the visit. A held
   key shows as pressed. The keycaps are `aria-hidden`: `aria-keyshortcuts` gives the shortcut to a
-  screen reader.
+  screen reader. A CSS media query shows them for a mouse, with no script.
+  They keep their room from the first paint, so the button does not grow,
+  and stay invisible until hydration: the prerender cannot know if the
+  platform says Ctrl or Command.
 - The prompt has `dir="auto"`, so Arabic and Hebrew run from the right.
 - The link and the counts use the prompt without spaces and new lines at the
   ends.
