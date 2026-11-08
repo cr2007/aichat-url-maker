@@ -85,7 +85,21 @@ function CopyButton({ value, quiet = false, label = false, disabled = false, cla
         ) : (
           <Copy className="size-4" />
         )}
-        {label && <span aria-hidden="true">{isCopied ? "Copied" : "Copy"}</span>}
+        {/* Both words share one grid cell, so the wider one sets the width
+            and nothing moves on a copy. The shown word fades in. */}
+        {label && (
+          <span aria-hidden="true" className="grid text-left">
+            {["Copy", "Copied"].map((word) => (
+              <span
+                key={word}
+                data-shown={word === (isCopied ? "Copied" : "Copy")}
+                className="[grid-area:1/1] transition-[opacity,filter] duration-150 ease-out data-[shown=false]:opacity-0 data-[shown=false]:blur-[2px]"
+              >
+                {word}
+              </span>
+            ))}
+          </span>
+        )}
       </button>
       {/* The result is announced and stays in the layout, so it cannot cover
           the label above the field. A live region with no role: TalkBack

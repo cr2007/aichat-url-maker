@@ -543,6 +543,34 @@ describe("the dock on a phone, worst cases", () => {
     await phone.close()
   })
 
+  test("a copy changes the label but moves nothing in the link box", async () => {
+    // "Copied" is wider than "Copy". The button grew, the box measured it,
+    // and the link text jumped on the copy and again 2.5 seconds later.
+    const phone = await openPage({
+      touch: true,
+      width: 412,
+      height: 915,
+      initScript: SHARE_STUB + ";Object.defineProperty(navigator, \"clipboard\", { value: { writeText: async () => {} } })",
+    })
+    await fillPrompt(phone.page)
+    const widths = () =>
+      phone.page.evaluate(() => ({
+        button: Math.round(document.querySelector("#url-preview button[aria-label=\"Copy link\"]")!.getBoundingClientRect().width),
+        text: Math.round(document.getElementById("url-full")!.getBoundingClientRect().width),
+      }))
+    const before = await widths()
+    await phone.page.click("#url-preview button[aria-label=\"Copy link\"]")
+    // The live region says "Link copied" while the label shows "Copied".
+    const status = "#url-preview ~ p[aria-live], #url-preview p[aria-live]"
+    await phone.page.waitForFunction((sel) => document.querySelector(sel)?.textContent === "Link copied", status)
+    await settle(phone.page)
+    expect(await widths()).toEqual(before)
+    await phone.page.waitForFunction((sel) => document.querySelector(sel)?.textContent === "", status, { timeout: 4000 })
+    await settle(phone.page)
+    expect(await widths()).toEqual(before)
+    await phone.close()
+  })
+
   test("Share shows on a phone with the share sheet, and never on a desktop", async () => {
     const phone = await openPage({ ...PHONE, initScript: SHARE_STUB })
     expect(await phone.page.locator("#url-preview button", { hasText: "Share" }).count()).toBeGreaterThan(0)
