@@ -23,6 +23,7 @@ complete, even when it works.
 | `Step X.Y` inside a function | Number the steps in a function body. Write the reason, not the operation |
 | Use what exists | Do not add a file, a dependency, an abstraction or a state manager that the task does not need. Put a new constant in a file that already fits |
 | Never commit `.claude/` | Personal tooling. It is gitignored. Keep it that way |
+| No device model | Write "a real Android phone", not the make or model of a test device. The model is personal data |
 
 ### Before you say a change is complete
 
