@@ -578,6 +578,33 @@ describe("the dock on a phone, worst cases", () => {
     await phone.close()
   })
 
+  test("the closed line shows the first word of a right-to-left prompt", async () => {
+    // The text keeps one width, so a short Arabic prompt fit on the first
+    // line. That line runs from the right, so its first word sat under the
+    // chevron and the closed line showed the last word.
+    const phone = await openPage({ touch: true, width: 412, height: 915, initScript: SHARE_STUB })
+    const first = "اكتب"
+    await fillPrompt(phone.page, `${first} خطة رحلة إلى دبي`)
+    const place = await phone.page.evaluate((word) => {
+      const text = document.getElementById("url-full")!
+      const node = [...text.childNodes].find((n) => n.textContent!.includes(word))!
+      const range = document.createRange()
+      range.setStart(node, node.textContent!.indexOf(word))
+      range.setEnd(node, node.textContent!.indexOf(word) + word.length)
+      const box = range.getBoundingClientRect()
+      return {
+        top: box.top - text.getBoundingClientRect().top,
+        left: box.left,
+        chevron: document.querySelector("#url-preview-chevron svg")!.getBoundingClientRect().left,
+      }
+    }, first)
+    expect(place.top).toBeLessThan(10)
+    // At least 20px of the word shows before the box of the chevron. With
+    // Share the line is short, so the word starts in the fade.
+    expect(place.left).toBeLessThan(place.chevron - 8 - 20)
+    await phone.close()
+  })
+
   test("a copy changes the label but moves nothing in the link box", async () => {
     // "Copied" is wider than "Copy". The button grew, the box measured it,
     // and the link text jumped on the copy and again 2.5 seconds later.

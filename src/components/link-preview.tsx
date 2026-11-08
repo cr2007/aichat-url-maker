@@ -18,6 +18,9 @@ const SCHEME = /^https:\/\//
 /** A plus sign, which URLSearchParams writes for a space. */
 const PLUS = /\+/g
 
+/** A prompt whose first letter is in a script that runs from the right. */
+const RTL_PROMPT = /[?&]q=\P{L}*[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}]/u
+
 
 /**
  * True on a phone or a tablet with the system share sheet. The query reads
@@ -107,6 +110,8 @@ function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
   // itself at the next key.
   if (!hasUrl && expanded) setExpanded(false)
   const open = expanded && hasUrl
+  const readable = readableUrl(url)
+  const rtlPrompt = RTL_PROMPT.test(readable)
 
   // The closed chevron stops before the buttons. Their width changes with
   // Share and with the narrow layout, so it is measured, not guessed.
@@ -161,7 +166,11 @@ function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
           id="url-full"
           className="relative block h-5 min-w-0 flex-1 overflow-hidden wrap-anywhere [interpolate-size:allow-keywords] [scrollbar-width:none] transition-[height,padding-bottom] duration-250 ease-in-out group-data-[open=true]:h-auto group-data-[open=true]:max-h-60 group-data-[open=true]:overflow-y-auto group-data-[open=true]:pb-11 group-data-[open=true]:animate-[link-settle_250ms_var(--ease-out)]"
         >
-          {hasUrl ? readableUrl(url) : "Type a prompt to make a link."}
+          {/* A right-to-left prompt on one line shows its end on the left, under
+              the visible part. So its first line ends where the closed line
+              ends, in both states, and its first words show. */}
+          {rtlPrompt && <span aria-hidden="true" className="float-right h-5 w-(--actions-width)" />}
+          {hasUrl ? readable : "Type a prompt to make a link."}
         </span>
         {/* A mask in the colour of the box covers the end of the first line,
             and its fade says that there is more. It stays under the buttons
