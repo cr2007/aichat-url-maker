@@ -261,6 +261,34 @@ describe("the opened tab", () => {
     expect(await opened.page.isVisible("#popup-blocked-notice")).toBe(true)
     await opened.close()
   })
+
+  test("a blocked tab gets a link that opens the app, and an undo does not bring the notice back", async () => {
+    // The notice once said only "allow pop-ups". It came back after an undo
+    // to the same prompt, because it matched the link, not the click.
+    const opened = await openPage()
+    await opened.context.route("https://chatgpt.com/**", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<title>stub</title>" })
+    )
+    await opened.page.evaluate(() => {
+      window.open = () => null
+    })
+    await fillPrompt(opened.page)
+    await opened.page.click("#open-in-provider")
+    const link = opened.page.locator("#popup-blocked-notice a")
+    expect(await link.getAttribute("href")).toBe(await generatedUrl(opened.page))
+    expect(await link.getAttribute("target")).toBe("_blank")
+    // A click on a real link is not a pop-up, so it opens the app.
+    const [tab] = await Promise.all([opened.context.waitForEvent("page"), link.click()])
+    await tab.waitForLoadState()
+    expect(tab.url()).toContain("chatgpt.com")
+    await tab.close()
+
+    await fillPrompt(opened.page, "Summarize this paper!")
+    expect(await opened.page.isVisible("#popup-blocked-notice")).toBe(false)
+    await fillPrompt(opened.page)
+    expect(await opened.page.isVisible("#popup-blocked-notice")).toBe(false)
+    await opened.close()
+  })
 })
 
 describe("the description of a pill", () => {

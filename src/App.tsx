@@ -327,11 +327,9 @@ function PageContent() {
   const [selectedFeature, setSelectedFeature] = useState<Feature>("")
   const [temporaryChat, setTemporaryChat] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
-  // The URL of a blocked popup. The message goes away when the prompt, the
-  // provider, the feature or the temporary chat setting changes. A value of
-  // `null` means that the browser blocked no popup.
+  // The link of a blocked new tab, and of a failed clipboard write. `null`
+  // means no notice. A late clipboard result for an old link cannot match.
   const [blockedURL, setBlockedURL] = useState<string | null>(null)
-  // The URL of a failed clipboard write. It clears the same way.
   const [copyFailedURL, setCopyFailedURL] = useState<string | null>(null)
 
   const provider = getProvider(selectedProvider)
@@ -383,6 +381,14 @@ function PageContent() {
     window.addEventListener("resize", keepPromptInView)
     return () => window.removeEventListener("resize", keepPromptInView)
   }, [])
+  // Any change of the link clears both notices. An undo back to the same link
+  // then does not bring an old notice back.
+  const [noticeURL, setNoticeURL] = useState(url)
+  if (url !== noticeURL) {
+    setNoticeURL(url)
+    setBlockedURL(null)
+    setCopyFailedURL(null)
+  }
   const popupBlocked = blockedURL === url
   const copyFailed = copyFailedURL === url
 
@@ -669,8 +675,17 @@ function PageContent() {
                 role="alert"
                 className="text-[0.8125rem] text-center text-destructive"
               >
-                {provider.name} did not open. Allow pop-up windows for this
-                site, then try again.
+                {/* A link that the person clicks is never blocked as a pop-up. */}
+                The browser blocked the new tab.{" "}
+                <a
+                  href={resolveOpenAction(url).targetURL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium underline underline-offset-2 focus-ring rounded-sm"
+                >
+                  Open {provider.name}
+                </a>
+                , or allow pop-ups for this site.
               </p>
             )}
           </div>
