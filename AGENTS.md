@@ -68,7 +68,9 @@ https://cr2007.github.io/aichat-url-maker
 - TypeScript (strict mode)
 - Bun (required runtime and package manager -- do not use Node.js or npm)
 - Tailwind CSS v4 + CSS variables
-- Radix UI primitives
+- No UI library. The controls are plain HTML with ARIA, and the tooltip is a
+  native popover placed with CSS anchor positioning. Radix was removed: its
+  three packages were about 24 KB of the 110 KB gzipped bundle
 - Lucide icons
 - ESLint (flat config)
 - GitHub Pages deployment via GitHub Actions
@@ -118,11 +120,11 @@ src/
 │  ├─ copyable-input.tsx       # CopyButton, and the read-only URL field that uses it
 │  ├─ provider-icons.tsx       # The brand marks of the AI apps
 │  ├─ link-preview.tsx         # The link box in the phone dock: one line that grows in place
-│  └─ ui/                      # shadcn-style Radix wrappers
+│  └─ ui/                      # Small controls with no library
 │     ├─ button.tsx
 │     ├─ segmented-control.tsx # Provider picker: one track, sliding indicator
-│     ├─ toggle.tsx            # Toggle, ToggleGroup and ToggleGroupItem
-│     └─ tooltip.tsx           # Feature descriptions on hover and focus
+│     ├─ toggle.tsx            # Toggle: a button with aria-pressed
+│     └─ tooltip.tsx           # useTooltip: feature descriptions on hover, focus and long press
 └─ lib/
    ├─ console-banner.ts        # The greeting that the browser console shows
    ├─ prompt-ideas.ts          # Example prompts for the empty prompt field, and the picker
@@ -384,11 +386,12 @@ The appearance follows the system. The app has no light or dark control, no them
 
 ### Segmented Control
 
-`src/components/ui/segmented-control.tsx` is the provider control. It changes three Radix defaults. Keep all three.
+`src/components/ui/segmented-control.tsx` is the provider control. It is the ARIA radio group pattern, with no library.
 
-- The track has `role="radiogroup"`. Radix gives it `role="group"`. The items already have `role="radio"` and `aria-checked`.
-- Selection follows the arrow keys through `onFocus`. Radix only moves the focus.
-- `onFocus` does not select while a pointer is down. A person can then press one segment and drag to a different segment.
+- The track has `role="radiogroup"`. Each segment is a `button` with `role="radio"` and `aria-checked`. The tests find segments by `[role="radio"]`, so native radio inputs would need new tests.
+- One tab stop: only the selected segment has `tabindex="0"`. The arrow keys, Home and End select and move the focus, and wrap at the ends.
+- Only a key or a click selects, never the focus. A person can then press one segment and drag to a different segment.
+- The selected segment styles from `aria-checked`, in `.segment-item` in `index.css`.
 
 A person can drag the indicator with a mouse, a pen or a finger. Rules for that gesture:
 
@@ -413,15 +416,20 @@ The feature pills and the temporary chat row are toggle buttons, not radios
 and not switches. HIG toggles.md: outside a list, use a button that behaves
 like a toggle, not a switch.
 
-- A pill has `role="button"` and `aria-pressed`. Radix marks an item in a
-  single group as `role="radio"`, but a radio cannot be unchecked, and a
-  second press on a pill clears the feature. `aria-checked` is cleared.
+- `Toggle` in `toggle.tsx` is a plain `button` with `aria-pressed`, and
+  `data-state` mirrors it for styles. A radio cannot be unchecked, and a
+  second press on a pill clears the feature, so the pills are not radios.
+  The pill row is `role="group"`. Radix made it a radiogroup of buttons.
+  Each pill is its own tab stop.
 - The whole temporary chat row is one control. A press anywhere in it toggles
   the setting.
 - A selected control shows a tick or a fill, not colour alone.
-- The pills style from `aria-pressed`, not `data-state`. A tooltip wraps each
-  pill, and `TooltipTrigger asChild` writes its own `data-state` over the
-  toggle's. The temporary chat row has no tooltip, so it reads `data-state`.
+- The pills style from `aria-pressed`. The temporary chat row reads
+  `data-state`.
+- On a real Android phone the accessibility nodes that TalkBack reads were
+  the same before and after Radix left: a `RadioButton` per segment, a
+  `ToggleButton` per pill, one node each, no label read twice (checked with
+  `uiautomator dump` against the live site).
 
 The pills use flex wrap with `justify-center` (`justify-start` from 1024px,
 where the label above is left aligned), not a grid. A grid keeps its
@@ -444,8 +452,8 @@ columns, so a part-filled last row stays on the left. Flex centres every row.
   utility uses it. Write `var(--ease-out)` in plain CSS, not the keyword.
 - A keyboard action has no motion. An arrow key selects a provider with no
   slide. A click still slides the indicator.
-- A tooltip that opens inside the skip delay has no animation. Radix marks it
-  `data-state="instant-open"`.
+- A tooltip that opens inside the skip delay (300ms) has no animation.
+  `useTooltip` marks it `data-state="instant-open"`.
 - A control that a person meets many times a day has no entrance animation. The
   URL field and the open button have none.
 
@@ -517,7 +525,7 @@ connection.
   the document would go over, and the build prints the size.
 - The markup comes from `react-dom/server`. Do not take it from a browser. A
   browser snapshot also holds what a component writes to the DOM after it
-  mounts, such as the roving `tabindex` from Radix. React then reports a
+  mounts, such as a `tabindex` that a library sets. React then reports a
   hydration mismatch and discards the markup.
 - The first client render must match the prerender. Do not read `localStorage`
   or `window` during a render. Use `useSyncExternalStore` with a server
@@ -688,35 +696,41 @@ A feature pill has a tooltip that describes the feature. The text is in
   also in the reading order, and a line-by-line reader heard it twice. The
   tooltip is in the page only while it is open, so a pill must not point
   `aria-describedby` at it.
+- `useTooltip` in `tooltip.tsx` has no library. It returns the props for the
+  trigger and the box. The box is a manual popover (`popover="manual"`) in
+  the top layer, so no parent clips it, and it is in the page only while it
+  is open. `.tooltip` in `index.css` places it 6px above the trigger with
+  CSS anchor positioning, 12px clear of the screen edges, below when there is
+  no room above. It has no arrow: at an edge the box shifts, and `anchor()`
+  does not resolve in its `::after`, so an arrow pointed at the middle of the
+  box, not at the pill. A browser with no anchor positioning shows the
+  popover centred on the screen.
+- One tooltip is open at a time in the page. A tooltip that replaces another
+  one, or opens within 300ms of a close, opens at once with no animation.
 - A tooltip fades in and leaves at once. It has no zoom, no slide and no exit.
   The fade is the native `tooltip-in` keyframe in `index.css`, so the app needs
-  no animation library. The tooltip is `@radix-ui/react-tooltip`, not the
-  `radix-ui` package of every primitive.
-  The closed state has `animate-none`. Without it the enter animation starts
-  again on close, and Radix keeps the old tooltip in the page beside the new
-  one. The box fits its text: `text-pretty`, not `text-balance`, because a
-  balanced box keeps its full width and leaves space on the right.
-- Touch and a pen tip: a tap opens nothing. Radix opens a tooltip on focus,
-  and a tap focuses the pill after the finger lifts, so `Tooltip` in
-  `tooltip.tsx` controls the open state and drops an open that comes from a
-  press that is not a mouse button. A press of 400ms opens the tooltip above
-  the finger. The click after that press does nothing. The tooltip stays 1.5
-  seconds after the finger lifts. A swipe of more than 10px cancels the press.
+  no animation library. The box fits its text: `text-pretty`, not
+  `text-balance`, because a balanced box keeps its full width and leaves
+  space on the right.
+- Touch and a pen tip: a tap opens nothing. A tap focuses the pill after the
+  finger lifts, and focus opens the tooltip for the keyboard, so a focus
+  that follows a press opens nothing. A press of 400ms opens the tooltip
+  above the finger. The click after that press does nothing. The tooltip
+  stays 1.5 seconds after the finger lifts. A swipe of more than 10px cancels
+  the press.
 - A pen on a touch device: Chromium on Android drops the hover exit of a pen
   (crbug.com/715114), so the page gets no leave event. A hovering pen sends a
-  move about every 16ms, even when held still. `Tooltip` opens on a pen hover
-  move and closes after 300ms with no move. After a pen tap the hover does
-  not reopen it until the pen leaves the trigger, as with a mouse click. Brave on Android (Chromium 156)
-  sends no pen hover at all. Chrome 158 does. Verified over adb on a real
-  Android phone.
-- Hover with a mouse or a pen: Radix opens the tooltip. A hover is a move with
-  no button down. When the main pointer is
-  coarse, `TooltipProvider` sets the delay to 0, so a mouse or an S Pen on a
-  phone gets the tooltip at once. A desktop waits 200ms.
-- Keyboard: focus opens the tooltip. `onBlur` resets the touch flag, so a tab
-  after a tap still works.
-- `TooltipTrigger asChild` writes `data-state` onto its child. Do not style a
-  trigger from `data-state`.
+  move about every 16ms, even when held still. The tooltip opens on a pen
+  hover move and closes after 300ms with no move. After a pen tap the hover
+  does not reopen it until the pen leaves the trigger, as with a mouse click.
+  Brave on Android (Chromium 156) sends no pen hover at all. Chrome 158 does.
+  Verified over adb on a real Android phone. The coarse pointer query is
+  made once at module level, because this rule runs on every pen move.
+- Hover with a mouse or a pen: a hover has no button down. When the main
+  pointer is coarse, a mouse or a pen on a phone gets the tooltip at once.
+  A desktop waits 200ms. A mouse button closes it until the mouse leaves.
+- Keyboard: focus opens the tooltip, and blur and Escape close it. `onBlur`
+  resets the touch flag, so a tab after a tap still works.
 
 ### Console Greeting
 
@@ -753,7 +767,8 @@ console style. A test guards this.
 
 ### UI Components
 - Reuse components in `src/components/ui/`.
-- Follow Radix + shadcn patterns.
+- Use plain HTML with ARIA, and a native feature (popover, anchor
+  positioning, a media query) before a library or a script.
 - Always merge class names using `cn()`.
 
 ---

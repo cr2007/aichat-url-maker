@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react"
 import type * as React from "react"
-import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group"
 
 import { cn } from "@/lib/utils"
 import {
@@ -118,12 +117,10 @@ interface DragState {
  * glass surface and becomes longer. The indicator moves to the nearest
  * segment at the end of the drag, and the glass surface goes away.
  *
- * The control changes three defaults of the Radix toggle group:
- * - The track gets `role="radiogroup"`. Radix gives it `role="group"`. The
- *   items already have `role="radio"` and `aria-checked`.
- * - Selection follows the arrow keys. Radix only moves the focus.
- * - Focus does not select while a pointer is down. A person can therefore
- *   press one segment and drag to a different segment.
+ * The keyboard works as a radio group: one tab stop, the selected segment,
+ * and the arrow keys move the selection and the focus. Only a key or a click
+ * selects, never the focus. A person can therefore press one segment and drag
+ * to a different segment.
  *
  * @param props - See {@link SegmentedControlProps}.
  * @returns The segmented control.
@@ -289,33 +286,40 @@ function SegmentedControl<T extends string>({
   }, [])
 
   /**
-   * Selects the segment that has the focus. This applies to the keyboard only.
+   * Moves the selection with the arrow keys, Home and End, as a radio group
+   * does. The focus goes with it, and the list wraps at each end.
    *
-   * @param next - The value of the segment that got the focus.
+   * @param event - The key event on the track.
    */
-  const handleSegmentFocus = useCallback(
-    (next: T) => {
-      // Step 1.1: do nothing during a pointer interaction. The tap or the
-      // drag selects the segment.
-      if (dragRef.current) return
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      // Step 1.1: find the next segment for this key.
+      const last = options.length - 1
+      const next = {
+        ArrowRight: activeIndex === last ? 0 : activeIndex + 1,
+        ArrowDown: activeIndex === last ? 0 : activeIndex + 1,
+        ArrowLeft: activeIndex === 0 ? last : activeIndex - 1,
+        ArrowUp: activeIndex === 0 ? last : activeIndex - 1,
+        Home: 0,
+        End: last,
+      }[event.key]
+      if (next === undefined) return
 
-      // Step 1.2: the focus came from the keyboard. Select the segment.
-      onValueChange(next)
+      // Step 1.2: select it and move the focus. The page must not scroll.
+      event.preventDefault()
+      onValueChange(options[next].value)
+      trackRef.current?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus()
     },
-    [onValueChange]
+    [activeIndex, onValueChange, options]
   )
 
   return (
-    <ToggleGroupPrimitive.Root
+    <div
       ref={trackRef}
       id={id}
-      type="single"
       role="radiogroup"
       aria-label={label}
-      value={value}
-      // Radix sends "" when a person clicks the selected item
-      // again. This control always keeps one selection. Ignore that value.
-      onValueChange={(next) => next && onValueChange(next as T)}
+      onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -333,18 +337,22 @@ function SegmentedControl<T extends string>({
         style={indicatorStyle}
       />
       {options.map((option, index) => (
-        <ToggleGroupPrimitive.Item
+        <button
           key={option.value}
-          value={option.value}
-          onFocus={() => handleSegmentFocus(option.value)}
+          type="button"
+          role="radio"
+          aria-checked={index === activeIndex}
+          // One tab stop for the group: the selected segment.
+          tabIndex={index === activeIndex ? 0 : -1}
+          onClick={() => onValueChange(option.value)}
           data-candidate={candidateIndex === index}
           className={SEGMENT_CLASS}
         >
           {option.icon}
           <span className="min-w-0 text-center wrap-anywhere">{option.label}</span>
-        </ToggleGroupPrimitive.Item>
+        </button>
       ))}
-    </ToggleGroupPrimitive.Root>
+    </div>
   )
 }
 

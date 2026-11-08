@@ -46,6 +46,23 @@
   from { opacity: 0; }
 }
 
+/* The tooltip sits 6px above its trigger with CSS anchor positioning, 12px
+   clear of the screen edges, and goes below when there is no room above. It
+   has no arrow: at a screen edge the box shifts, and an arrow inside the box
+   cannot follow the trigger (anchor() does not resolve in its ::after). A
+   browser with no anchor positioning keeps the popover default: centred on
+   the screen, so the text still shows. */
+@supports (anchor-name: --a) {
+  .tooltip {
+    position-anchor: var(--tip-anchor);
+    position-area: top;
+    justify-self: anchor-center;
+    position-try-fallbacks: flip-block;
+    inset: auto;
+    margin: 0 0.75rem 0.375rem;
+  }
+}
+
 /* The tick enters from scale 0.9 with opacity. It does not overshoot. */
 @keyframes check-pop {
   from { transform: scale(0.9); opacity: 0; }
@@ -270,7 +287,7 @@
   color: var(--muted-foreground);
 }
 
-.segment-item[data-state="on"] {
+.segment-item[aria-checked="true"] {
   color: var(--foreground);
 }
 

@@ -22,9 +22,6 @@
     "test:all": "bun run test && bun run test:browser"
   },
   "dependencies": {
-    "@radix-ui/react-toggle": "^1.2.1",
-    "@radix-ui/react-toggle-group": "^1.2.1",
-    "@radix-ui/react-tooltip": "^1",
     "@tailwindcss/vite": "^4.3.5",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",

@@ -14,7 +14,8 @@ describe("the feature pills", () => {
       const pills = [...document.querySelectorAll("#feature-picker button")]
       return {
         count: pills.length,
-        roles: [...new Set(pills.map((p) => p.getAttribute("role")))],
+        // A plain button has its role with no attribute.
+        roles: [...new Set(pills.map((p) => p.getAttribute("role") ?? p.localName))],
         checked: [...new Set(pills.map((p) => p.getAttribute("aria-checked")))],
         pressed: pills.filter((p) => p.getAttribute("aria-pressed") === "true").length,
       }

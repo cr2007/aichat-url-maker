@@ -1,11 +1,11 @@
-import { Fragment, memo, useState, useCallback, useDeferredValue, useEffect, useRef, useSyncExternalStore } from "react"
+import { memo, useState, useCallback, useDeferredValue, useEffect, useRef, useSyncExternalStore } from "react"
 import type { ReactNode, RefObject } from "react"
 import { CopyableInput } from "@/components/copyable-input"
 import { LinkPreview } from "@/components/link-preview"
 import { Button } from "@/components/ui/button"
-import { Toggle, ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle"
+import { Toggle } from "@/components/ui/toggle"
 import { SegmentedControl } from "@/components/ui/segmented-control"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useTooltip } from "@/components/ui/tooltip"
 import { ArrowUpRight, MessageCircleDashed, ChevronDown, Copy, Check } from "lucide-react"
 import { PROVIDERS, getProvider, isUrlTooLong, resolveOpenAction } from "@/lib/providers"
 import type { ProviderId, Feature, FeatureOption } from "@/lib/providers"
@@ -42,12 +42,12 @@ const TEMPORARY_CHAT_CLASS =
   "data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:text-foreground dark:data-[state=on]:bg-primary/10"
 
 /**
- * The classes for a feature pill. It reads `aria-pressed`, because the tooltip
- * trigger writes over `data-state`. `h-auto whitespace-normal` lets a long
+ * The classes for a feature pill. It reads `aria-pressed`, the state that a
+ * screen reader gets too. `h-auto whitespace-normal` lets a long
  * label wrap, and `min-h-11` is the 44px target.
  */
 const PILL_CLASS =
-  "flex items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 max-w-full whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary transition-[background-color,color,border-color,scale] duration-150 text-sm font-medium"
+  "flex min-w-0 shrink-0 items-center justify-center gap-1.5 px-3 py-2 h-auto min-h-11 max-w-full whitespace-normal text-center rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-muted aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:border-primary transition-[background-color,color,border-color,scale] duration-150 text-sm font-medium"
 
 /** The reason in the counter line when the link is too long. One short line, so the page does not move. */
 const OVERSIZE_MESSAGE = "Too long for a link."
@@ -161,8 +161,8 @@ function useRotatingIdea(active: boolean, promptRef: RefObject<HTMLTextAreaEleme
 
 /**
  * The feature pills: toggle buttons, one at a time, and a second press clears
- * the choice. Radix marks a single-group item `role="radio"`, but a radio
- * cannot be unchecked, so each pill is a button with `aria-pressed`.
+ * the choice. A radio cannot be unchecked, so each pill is a button with
+ * `aria-pressed`, in a plain group.
  *
  * @param props.features - The pills to show.
  * @param props.value - The selected feature, or "".
@@ -179,42 +179,46 @@ const FeaturePills = memo(function FeaturePills({
   onChange: (value: Feature) => void
 }) {
   return (
-    <ToggleGroup
-      id="feature-picker"
-      type="single"
-      value={value}
-      onValueChange={(next) => onChange(next as Feature)}
-      aria-labelledby="feature-label"
-      className={FEATURE_ROW_CLASS}
-    >
+    <div id="feature-picker" role="group" aria-labelledby="feature-label" className={FEATURE_ROW_CLASS}>
       {features.map((option) => (
-        <Fragment key={option.value}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <ToggleGroupItem
-                value={option.value}
-                className={PILL_CLASS}
-                role="button"
-                aria-pressed={value === option.value}
-                aria-checked={undefined}
-                aria-describedby={`feature-${option.value}-description`}
-              >
-                {option.icon}
-                {option.label}
-              </ToggleGroupItem>
-            </TooltipTrigger>
-            <TooltipContent>{option.description}</TooltipContent>
-          </Tooltip>
-          {/* The tooltip is in the page only while open, so the description
-              lives here, hidden, and a screen reader reads it once. */}
-          <span id={`feature-${option.value}-description`} hidden>
-            {option.description}
-          </span>
-        </Fragment>
+        <FeaturePill key={option.value} option={option} pressed={value === option.value} onChange={onChange} />
       ))}
-    </ToggleGroup>
+    </div>
   )
 })
+
+/**
+ * One feature pill, with its tooltip.
+ *
+ * @param props.option - The feature.
+ * @param props.pressed - True while this feature is on.
+ * @param props.onChange - Receives the feature, or "" to clear it.
+ * @returns The pill, its tooltip while open, and its hidden description.
+ */
+function FeaturePill({ option, pressed, onChange }: { option: FeatureOption; pressed: boolean; onChange: (value: Feature) => void }) {
+  const { triggerProps, tooltip } = useTooltip(option.description)
+  return (
+    <>
+      {/* One feature at a time: a press turns this one on, or clears it. */}
+      <Toggle
+        {...triggerProps}
+        pressed={pressed}
+        onPressedChange={(on) => onChange(on ? option.value : "")}
+        className={PILL_CLASS}
+        aria-describedby={`feature-${option.value}-description`}
+      >
+        {option.icon}
+        {option.label}
+      </Toggle>
+      {tooltip}
+      {/* The tooltip is in the page only while open, so the description
+          lives here, hidden, and a screen reader reads it once. */}
+      <span id={`feature-${option.value}-description`} hidden>
+        {option.description}
+      </span>
+    </>
+  )
+}
 
 /**
  * The keycap look. The fill takes a step toward the page text colour, so the
@@ -772,11 +776,7 @@ function PageContent() {
  * @returns The app.
  */
 function App() {
-  return (
-    <TooltipProvider delayDuration={200}>
-      <PageContent />
-    </TooltipProvider>
-  )
+  return <PageContent />
 }
 
 export default App
