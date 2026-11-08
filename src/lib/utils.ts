@@ -122,12 +122,9 @@ export function countWords(text: string): number {
 }
 
 /**
- * Writes text to the clipboard.
- *
- * Every failure gives `false`, so one branch covers them all. A direct call to
- * `navigator.clipboard.writeText` cannot do this: an insecure origin has no
- * clipboard, so reading `writeText` throws at once, and a `.catch()` on the
- * call never sees that error.
+ * Writes text to the clipboard. An insecure origin, such as the dev server on
+ * a LAN address, has no Clipboard API, so the older copy command takes over.
+ * Every failure gives `false`, so one branch covers them all.
  *
  * @param text - The text to write.
  * @returns True if the text reached the clipboard.
@@ -138,15 +135,45 @@ export function countWords(text: string): number {
  * ```
  */
 export async function copyText(text: string): Promise<boolean> {
-  // Step 1.1: stop if the browser gives no clipboard.
-  if (!navigator.clipboard) return false
-
-  // Step 1.2: write. The browser refuses the permission on some origins,
-  // which rejects.
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    return false
+  // Step 1.1: the Clipboard API. Reading `writeText` on an insecure origin
+  // throws at once, so check that it exists first.
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      // Step 1.2: a refused permission rejects. Try the copy command.
+    }
   }
+  return copyWithCommand(text)
+}
+
+/**
+ * Copies text with the copy command, through a hidden field. It works where
+ * the Clipboard API is missing. The field is read-only, so a phone shows no
+ * keyboard, and the focus goes back where it was.
+ *
+ * @param text - The text to copy.
+ * @returns True if the browser ran the copy.
+ */
+function copyWithCommand(text: string): boolean {
+  if (typeof document === "undefined") return false
+  const field = document.createElement("textarea")
+  field.value = text
+  field.setAttribute("readonly", "")
+  field.style.cssText = "position:fixed;top:0;left:0;opacity:0"
+  const focused = document.activeElement
+  document.body.append(field)
+  // Step 1.1: select it all. iOS needs the explicit range.
+  field.select()
+  field.setSelectionRange(0, text.length)
+  let copied = false
+  try {
+    copied = document.execCommand("copy")
+  } catch {
+    copied = false
+  }
+  field.remove()
+  if (focused instanceof HTMLElement) focused.focus({ preventScroll: true })
+  return copied
 }

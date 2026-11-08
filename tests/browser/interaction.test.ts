@@ -188,6 +188,8 @@ describe("the copy button", () => {
         value: { writeText: () => Promise.reject(new Error("denied")) },
         configurable: true,
       })
+      // The copy command is the fallback. It fails too in this test.
+      document.execCommand = () => false
     })
 
     await opened.page.click('#url-preview button:has-text("Copy")')
@@ -199,6 +201,30 @@ describe("the copy button", () => {
         .join(" ")
     )
     expect(status).toMatch(/could not copy/i)
+    await opened.close()
+  })
+})
+
+describe("a page with no Clipboard API", () => {
+  test("it still copies, with the copy command", async () => {
+    // A page on plain http, such as the dev server on a LAN address, has no
+    // Clipboard API. Every copy failed there.
+    const opened = await openPage()
+    await opened.page.evaluate(() => {
+      Object.defineProperty(Navigator.prototype, "clipboard", { get: () => undefined, configurable: true })
+      const w = window as unknown as { __copied: string }
+      document.addEventListener("copy", () => {
+        w.__copied = String(document.getSelection())
+      })
+    })
+    await fillPrompt(opened.page)
+    await opened.page.click('#url-preview button[aria-label="Copy link"]')
+    await opened.page.waitForFunction(() =>
+      [...document.querySelectorAll("[aria-live]")].some((e) => e.textContent === "Link copied")
+    )
+    expect(await opened.page.evaluate(() => (window as unknown as { __copied: string }).__copied)).toBe(
+      await generatedUrl(opened.page)
+    )
     await opened.close()
   })
 })
@@ -216,6 +242,8 @@ describe("the open button without a clipboard", () => {
         get: () => undefined,
         configurable: true,
       })
+      // The copy command is the fallback. It fails too in this test.
+      document.execCommand = () => false
       const w = window as unknown as { __opened: string[] }
       w.__opened = []
       window.open = (url) => {
