@@ -199,6 +199,25 @@ describe("the prerendered document", () => {
   })
 })
 
+describe("after a deploy", () => {
+  test("a reload asks the network for the page, so a new build shows at once", async () => {
+    // The worker answered the page from its cache, so the first visit after
+    // a deploy showed the old build. A cache-first worker makes no request.
+    const opened = await openPage()
+    await opened.page.evaluate(() => navigator.serviceWorker.ready)
+    await opened.page.reload({ waitUntil: "networkidle" })
+    expect(await opened.page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true)
+    const fromWorker: string[] = []
+    opened.context.on("request", (request) => {
+      // The worker reports its own request for the page as a fetch.
+      if (request.serviceWorker() && request.url() === opened.page.url()) fromWorker.push(request.url())
+    })
+    await opened.page.reload({ waitUntil: "networkidle" })
+    expect(fromWorker.length).toBeGreaterThan(0)
+    await opened.close()
+  })
+})
+
 describe("a full pass", () => {
   test("it fetches no more code, stores nothing and reports no errors", async () => {
     const opened = await openPage()

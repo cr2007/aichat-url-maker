@@ -107,7 +107,7 @@ tests/
 src/
 ├─ App.tsx                     # Main UI, form state, and URL generation wiring
 ├─ main.tsx                    # React entry point. Hydrates the prerendered markup
-├─ sw.ts                       # Workbox service worker (vite-plugin-pwa, injectManifest). skipWaiting, so a deploy reaches an open app at the next reload
+├─ sw.ts                       # Workbox service worker (vite-plugin-pwa, injectManifest). The page is network-first, the hashed files are precached
 ├─ index.css                   # Tailwind setup, design tokens, the font, appearance, reduced motion
 ├─ assets/fonts/               # Instrument Sans, self-hosted: latin and latin-ext woff2
 ├─ components/
@@ -196,7 +196,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, the selected states in forced colors, a hover on the open button that raises the contrast with no glow, and a prompt field edge of 3:1 in both appearances |
 | `tests/browser/interaction.test.ts` | The example prompt that matches the placeholder and leaves on the first letter, an opened tab with no `window.opener` and the blocked popup message, a blocked tab with a link that opens the app and no notice after an undo, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, no scrollbar in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, a reload that asks the network for the page after a deploy, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, no scrollbar in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
 
@@ -476,6 +476,24 @@ Give each important container and control a readable `id`. Name it for its funct
 - Write the reason for the code, not the operation of the code. Delete a comment that is not correct.
 - Use ASD-STE100 Simplified Technical English. Write short sentences. Use the active voice. Use one word for one meaning.
 - Do not use an em dash. Do not use an emoji.
+
+### Service worker
+
+`src/sw.ts` keeps the app working offline, and a deploy must still show at
+once.
+
+- The page is network-first, with `cache: "no-cache"`. GitHub Pages sends
+  `max-age=600`, so a plain fetch could get a 10 minute old page from the
+  browser cache. Offline, or after 3 seconds, the precached page answers.
+- Cache-first for the page showed the old build on the first visit after
+  every deploy. A test of two builds served in turn showed it: the old
+  worker gave v1, then v2; this one gives v2 at once and still loads offline.
+- The scripts, the styles and the fonts have a hash in their names, so they
+  stay precached and cache-first.
+- `skipWaiting` and `clientsClaim` let a new worker take over without a
+  closed window. The worker never reloads an open page, so a typed prompt
+  is safe.
+- Import `workbox-*` packages only from the direct dev dependencies.
 
 ### First Response
 
