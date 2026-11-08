@@ -808,6 +808,10 @@ appearance. Make them again when the UI changes:
   export an MP4, and make the GIF with ffmpeg `palettegen` and
   `paletteuse=diff_mode=rectangle` at 960px and 15 fps. Each GIF is about
   1.3 MB.
+- `*.gif` is in Git LFS (`.gitattributes`). Run `git lfs install --local`
+  once per clone. GitHub serves an LFS image in the README from
+  `media.githubusercontent.com`, and each view counts against the LFS
+  bandwidth quota. CI checks out without LFS and never reads `docs/`.
 
 ## Social Metadata and Favicons
 
