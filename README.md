@@ -54,17 +54,20 @@ Every test is in `tests/`: `tests/unit/` for the pure functions and
 bunx --bun playwright install chromium
 ```
 
-## Node.js
+## Without Bun (Node.js)
 
-If you wish to run the application via [Node.js](https://nodejs.org), you can do so using the following steps:
+Bun is the recommended setup. If you cannot install it, [Node.js](https://nodejs.org)
+can run the app for development:
 
 ```sh
-# Clone the repository
 git clone https://github.com/cr2007/aichat-url-maker
 cd aichat-url-maker
 
-bun i       # Installs the dependencies
-bun dev     # Starts the development server
+npm i                  # Installs the dependencies
+npm run dev            # Starts the development server at http://localhost:5173
+npm run build:nossg    # Builds to dist/, without the prerender step
+npm run lint           # Runs ESLint
 ```
 
-And then you can access the web app at http://localhost:5173
+These scripts need Bun and do not run under Node: `build` (its prerender step
+runs with Bun), `test`, `test:browser` and `test:all` (they use `bun test`).
