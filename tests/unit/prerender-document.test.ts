@@ -133,7 +133,7 @@ describe("BASE_PATH", () => {
       "console.log(JSON.stringify({ BASE_PATH, base: config.base }))"
     const run = Bun.spawnSync(["bun", "-e", source], {
       cwd: ROOT,
-      env: { ...process.env, GITHUB_PAGES: "true", GITHUB_REPO: "aichat-url-maker" },
+      env: { ...Bun.env, GITHUB_PAGES: "true", GITHUB_REPO: "aichat-url-maker" },
     })
 
     // Step 1.2: read the last line, so a warning above it does not break it.

@@ -1,4 +1,3 @@
-import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -42,7 +41,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      // A web URL, not a Node path module. Vite keeps import.meta.url on
+      // this file when it bundles the config.
+      "@": new URL("./src", import.meta.url).pathname,
     },
   },
   base: BASE_PATH,

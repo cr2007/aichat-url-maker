@@ -18,7 +18,7 @@
  * build never made.
  */
 export const BASE_PATH =
-  process.env.GITHUB_PAGES === "true" ? `/${process.env.GITHUB_REPO || ""}/` : ""
+  Bun.env.GITHUB_PAGES === "true" ? `/${Bun.env.GITHUB_REPO || ""}/` : ""
 
 /**
  * The first-response budget, in gzipped bytes.

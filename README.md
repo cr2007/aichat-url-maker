@@ -32,11 +32,9 @@ To build a link by hand, see the link format in [`public/llms.txt`](public/llms.
 
 # Quick start
 
-## Bun (recommended)
+The app needs [Bun](https://bun.sh). Every script runs on Bun, not on Node.js.
 
-This application was built in [Bun](https://bun.sh), so it is recommended that you use Bun if possible.
-
-### Install and run
+## Install and run
 
 ```sh
 # Clone the repository
@@ -49,7 +47,7 @@ bun dev # Starts the development server
 
 And then you can access the web app at http://localhost:5173
 
-### Other commands
+## Other commands
 
 ```sh
 bun run test         # Runs the unit tests
@@ -66,21 +64,3 @@ Every test is in `tests/`: `tests/unit/` for the pure functions and
 ```sh
 bunx --bun playwright install chromium
 ```
-
-## Without Bun (Node.js)
-
-Bun is the recommended setup. If you cannot install it, [Node.js](https://nodejs.org)
-can run the app for development:
-
-```sh
-git clone https://github.com/cr2007/aichat-url-maker
-cd aichat-url-maker
-
-npm i                  # Installs the dependencies
-npm run dev            # Starts the development server at http://localhost:5173
-npm run build:nossg    # Builds to dist/, without the prerender step
-npm run lint           # Runs ESLint
-```
-
-These scripts need Bun and do not run under Node: `build` (its prerender step
-runs with Bun), `test`, `test:browser` and `test:all` (they use `bun test`).

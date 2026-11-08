@@ -12,11 +12,11 @@
     "email": "github@csk.fyi"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "bun check && vite build && bun run scripts/prerender.tsx",
-    "build:nossg": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
+    "dev": "bun --bun vite",
+    "build": "bun check && bun --bun vite build && bun run scripts/prerender.tsx",
+    "build:nossg": "bun check && bun --bun vite build",
+    "lint": "bun --bun eslint .",
+    "preview": "bun --bun vite preview",
     "test": "bun test tests/unit",
     "test:browser": "bun run build && bun test tests/browser --timeout 30000",
     "test:all": "bun run test && bun run test:browser"
