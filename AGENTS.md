@@ -799,6 +799,13 @@ Each AI provider has its own URL structure and parameters:
 - Base URL: `https://www.perplexity.ai/search`
 - Query parameters:
   - `q` → prompt text (required)
+  - `focus` → one mode: `scholar`, `reddit`, `youtube`, `wolfram`, `writing` (optional)
+  - `copilot=true` → Pro Search (optional). It is a pill like the modes, so it does not combine with a focus.
+- Perplexity documents neither `focus` nor `copilot`. Third-party guides from
+  2024 to 2026 list them, and one says `copilot` stopped working in 2025. A
+  live test must confirm each value before this ships.
+- Each provider keeps its own feature in `selectedFeatures` in `App.tsx`, so a
+  pick on ChatGPT survives a visit to Perplexity.
 - Uses `URL` and `URLSearchParams` for proper encoding.
 
 **Oversized URL fallback (`MAX_SAFE_URL_LENGTH = 7500`):**

@@ -345,19 +345,28 @@ describe("the page does not move", () => {
 
 describe("a provider without a control", () => {
   test("the row folds away, leaves the tab order, and comes back", async () => {
+    // Claude has no features. Perplexity has no temporary chat.
     const opened = await openPage({ width: 760 })
+    await opened.page.click('#provider-picker [role="radio"]:has-text("Claude")')
+    await opened.page.waitForTimeout(450)
+    const noFeatures = await opened.page.evaluate(() => ({
+      height: document.getElementById("feature-collapse")!.getBoundingClientRect().height,
+      inert: document.getElementById("feature-collapse")!.hasAttribute("inert"),
+    }))
+    expect(noFeatures.height).toBeLessThanOrEqual(1)
+    expect(noFeatures.inert).toBe(true)
+
     await opened.page.click('#provider-picker [role="radio"]:has-text("Perplexity")')
     await settle(opened.page)
 
     const folded = await opened.page.evaluate(() => ({
-      features: document.getElementById("feature-collapse")!.getBoundingClientRect().height,
       temporary: document.getElementById("temporary-chat-collapse")!.getBoundingClientRect().height,
-      featuresInert: document.getElementById("feature-collapse")!.hasAttribute("inert"),
       temporaryInert: document.getElementById("temporary-chat-collapse")!.hasAttribute("inert"),
+      features: document.getElementById("feature-picker")!.textContent ?? "",
     }))
-    expect(folded.features).toBeLessThanOrEqual(1)
     expect(folded.temporary).toBeLessThanOrEqual(1)
-    expect(folded.featuresInert && folded.temporaryInert).toBe(true)
+    expect(folded.temporaryInert).toBe(true)
+    expect(folded.features).toContain("Academic")
 
     await opened.page.click('#provider-picker [role="radio"]:has-text("ChatGPT")')
     await settle(opened.page)

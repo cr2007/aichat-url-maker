@@ -358,7 +358,8 @@ function Collapse({
 function PageContent() {
   const [prompt, setPrompt] = useState("")
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>("chatgpt")
-  const [selectedFeature, setSelectedFeature] = useState<Feature>("")
+  // One feature for each provider, so a pick on one survives a visit to another.
+  const [selectedFeatures, setSelectedFeatures] = useState<Partial<Record<ProviderId, Feature>>>({})
   const [temporaryChat, setTemporaryChat] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   // The link of a blocked new tab, and of a failed clipboard write. `null`
@@ -368,22 +369,24 @@ function PageContent() {
 
   const provider = getProvider(selectedProvider)
 
-  // The temporary chat row keeps the text of the last provider that supports
-  // it while the row folds away. Without this the name and the icon would
-  // change in the middle of the fold. The feature row needs no such state,
-  // because it reads from the one provider that has features.
+  // A row that folds away keeps the text of the last provider that supports
+  // it. Without this the names and the icons would change mid-fold.
   const [tempProvider, setTempProvider] = useState(provider)
   if (provider.supportsTemporaryChat && provider !== tempProvider) {
     setTempProvider(provider)
   }
-  const featureProvider = PROVIDERS.find((p) => p.supportsFeatures) ?? provider
+  const [featureProvider, setFeatureProvider] = useState(provider)
+  if (provider.supportsFeatures && provider !== featureProvider) {
+    setFeatureProvider(provider)
+  }
+  const shownFeature = selectedFeatures[featureProvider.id] ?? ""
 
   // A provider that does not support a setting ignores it, but the setting
   // stays in state. A person who moves to another provider and back therefore
   // keeps their choice. Clearing the state here would destroy it, and the
   // segmented control changes the provider on focus alone, so an arrow key
   // would be enough to lose it.
-  const feature = provider.supportsFeatures ? selectedFeature : ""
+  const feature = provider.supportsFeatures ? (selectedFeatures[provider.id] ?? "") : ""
   const isTemporary = provider.supportsTemporaryChat && temporaryChat
 
   // Spaces and new lines at the ends are not part of the prompt. They would
@@ -461,6 +464,16 @@ function PageContent() {
     if (opened) opened.opener = null
     setBlockedURL(opened ? null : url)
   }, [url, trimmedPrompt])
+
+  /**
+   * Selects a feature for the current provider, or clears it.
+   *
+   * @param value - The feature, or "" after a second press on the pill.
+   */
+  const handleFeatureChange = useCallback((value: Feature) => {
+    // Step 1.1: each provider keeps its own choice, so key it by provider.
+    setSelectedFeatures((prev) => ({ ...prev, [selectedProvider]: value }))
+  }, [selectedProvider])
 
   /**
    * Opens or closes the steps under "How it works".
@@ -586,8 +599,8 @@ function PageContent() {
               <span id="feature-label" aria-hidden="true" className={SECTION_LABEL_CLASS}>Features (optional)</span>
               <FeaturePills
                 features={featureProvider.features}
-                value={selectedFeature}
-                onChange={setSelectedFeature}
+                value={shownFeature}
+                onChange={handleFeatureChange}
               />
               {/* Only a finger needs this line. A mouse and a pen show the
                   tooltip on hover. */}

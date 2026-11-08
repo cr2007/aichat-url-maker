@@ -169,12 +169,21 @@ describe("provider settings survive a provider change", () => {
     const away = await generatedUrl(opened.page)
     expect(away).not.toContain("hints=")
     expect(away).not.toContain("temporary-chat=true")
+    // Each provider keeps its own feature.
+    expect(away).not.toContain("focus=")
+    await opened.page.click('#feature-picker button:has-text("Academic")')
+    await opened.page.waitForTimeout(250)
+    expect(await generatedUrl(opened.page)).toContain("focus=scholar")
 
     await opened.page.click('#provider-picker [role="radio"]:has-text("ChatGPT")')
     await settle(opened.page)
     const back = await generatedUrl(opened.page)
     expect(back).toContain("hints=research")
     expect(back).toContain("temporary-chat=true")
+
+    await opened.page.click('#provider-picker [role="radio"]:has-text("Perplexity")')
+    await opened.page.waitForTimeout(250)
+    expect(await generatedUrl(opened.page)).toContain("focus=scholar")
     await opened.close()
   })
 })
