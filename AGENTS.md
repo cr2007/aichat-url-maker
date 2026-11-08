@@ -200,7 +200,7 @@ attributes, the layout at each width, the contrast and the drag gesture.
 |------|--------|
 | `tests/browser/accessibility.test.ts` | Contrast in both appearances, the 24px WCAG target and the 44px HIG target, the 13px text floor, one `h1`, an accessible name on every control and group, hidden decorative icons, the same focus indicator on every control, reduced motion, the selected states in forced colors, a hover on the open button that raises the contrast with no glow, and a prompt field edge of 3:1 in both appearances |
 | `tests/browser/interaction.test.ts` | A copy with no Clipboard API, the example prompt that matches the placeholder and leaves on the first letter, an opened tab with no `window.opener` and the blocked popup message, a blocked tab with a link that opens the app and no notice after an undo, the pills as toggle buttons, a second press to clear, one feature at a time, the tooltip text, the tooltip for a tap, a long press, a swipe, a mouse, a pen that hovers and leaves, a pen tip, the hover style for a hovering pen that a finger tap clears, a sweep that never shows two tooltips and the keyboard, the text that cannot be selected, the home screen icons, the description that a pill has at rest, the counter that is not a live region, a press anywhere in the temporary chat row, drag and tap and arrow keys on the provider control, settings that survive a provider change, the copy failure message, and the open button on an origin with no clipboard, every label, counter and description as a single screen reader stop, a short name for the temporary chat row, Ctrl+Enter to open, keycaps for a mouse at any width and on a touch screen only after a physical key, a held key shown as pressed on its keycap, Arabic from the right, a trimmed prompt, and no copy of a link that is too long |
-| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, a reload that asks the network for the page after a deploy, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, no scrollbar in the link box, a copy or a failed copy that moves nothing in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
+| `tests/browser/rendering.test.ts` | The rounded corners on every pill, the layout from 320px to 1024px, one column and two columns with the first controls on one line, a page that does not move on the first character, the open button in view on a short screen, every feature above the dock on a phone, the link line that grows into a panel with the full link and closes on a tap outside, the "How it works" steps that fold open into view, the fold of the rows that a provider does not support, text at 200 percent, the page without JavaScript, the prerendered markup, hydration without a mismatch, a page that fetches no more code as a person uses it, the console art, a reload that asks the network for the page after a deploy, and a full pass that stores nothing, a box that grows upward with the buttons fixed in the corner and turns back on a second tap, a close that starts gently with the text at full width, a chevron that slides with no jump over text of one width, no scrollbar in the link box, a copy or a failed copy that moves nothing in the link box, a link line in readable letters, Share on a phone only, a one-line oversize message, and a prompt field the keyboard does not hide under the dock |
 
 Rules for a browser test:
 
@@ -608,22 +608,34 @@ left, the result on the right.
   not the screen width. The share sheet needs a secure origin, so a page on
   plain http gets Copy only.
 - The link, Copy and Share are one box, `LinkPreview` in `link-preview.tsx`.
-  Closed, the box shows one line of the link, with a fade at its end, and the
-  text stops before the buttons. A tap on the text (`#url-preview-toggle`)
-  opens it: the text uses the full width and grows to its natural height
-  (`height: auto` with `interpolate-size`), and the box grows upward. A
-  second tap, Escape, or a tap outside closes it. The focus stays on the
+  Closed, the box shows one line of the link. The buttons and the chevron
+  cover its end, and a fade on the chevron says that there is more. A tap on
+  the text (`#url-preview-toggle`) opens it: the text grows to its natural
+  height (`height: auto` with `interpolate-size`), and the box grows upward.
+  A second tap, Escape, or a tap outside closes it. The focus stays on the
   toggle. Copy and Share never move: they are pinned to the bottom right
-  corner, and the closed text keeps clear of their measured width.
+  corner.
+- The text has one width in both states, so its first line never wraps
+  again. A mask in the colour of the box, under the buttons, covers the end
+  of the first line. On open the chevron (`#url-preview-chevron`) runs
+  along the button row behind the buttons, by their measured width
+  (`--actions-width`), then rises out of them to the top right corner:
+  `top` goes from `calc(100% - 2rem)` to `0.75rem`, and the percent follows
+  the box while it grows. On close it drops behind the buttons, then slides
+  out after 150ms. The mask keeps time with it. In front of the buttons the
+  chevron rested on the Share label for a few frames on a real phone. An
+  older layout gave the closed text a narrow column and put the width back
+  in one step at the end of the close. The chevron then jumped 173px in one
+  frame, and the first line wrapped again. A test tracks the chevron frame
+  by frame.
 - The motion must go unnoticed: 250ms each way, one element, no swap and
-  no crossfade. The open uses `--ease-out`. The close uses Tailwind's
-  `ease-in-out`, because `--ease-out` did most of the shrink in the first
-  80ms and read as rushed. The room for the buttons is `padding-bottom`, so
+  no crossfade. Both ways use Tailwind's `ease-in-out`, so the open and the
+  close have the same pace. `--ease-out` did most of the change in the first
+  80ms and read as rushed, on the close and then on the open. On a real
+  phone the text height and padding follow the same curve both ways; the
+  open starts one frame later, for the `auto` height. The room for the buttons is `padding-bottom`, so
   it is in the transition with the height. Without it the close dropped 44px
-  in the first frame. On close the text keeps the full width until the box
-  has shrunk: the padding for the buttons comes back after 250ms. With Share
-  the closed column is narrow, and on a real phone an early change made the
-  text jump into a tall column of five lines. The text hides its scrollbar: it is taller than the box
+  in the first frame. The text hides its scrollbar: it is taller than the box
   while the box grows, and a touch still scrolls a long link. On open the text settles out of a 2px
   blur (`link-settle` in `index.css`), which hides the jump of the reflow. A
   CSS transition turns around from where it is, so a tap during the motion

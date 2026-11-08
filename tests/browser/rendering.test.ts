@@ -543,6 +543,41 @@ describe("the dock on a phone, worst cases", () => {
     await phone.close()
   })
 
+  test("the chevron slides between its places, and the text keeps its width", async () => {
+    // The room for the buttons came back in one step at the end of the close.
+    // The chevron then appeared 173px to the left in one frame, and the first
+    // line wrapped again.
+    const phone = await openPage({ touch: true, width: 412, height: 915, initScript: SHARE_STUB })
+    await fillPrompt(phone.page, "Plan a 3-day trip to Goa with a budget for two people.")
+    const line = (await phone.page.locator("#url-preview-toggle").boundingBox())!
+    const tap = () => phone.page.touchscreen.tap(line.x + 30, line.y + line.height / 2)
+    await tap()
+    await settle(phone.page)
+    // Step 1: slow every animation, so each frame is a small part of the motion.
+    const cdp = await phone.context.newCDPSession(phone.page)
+    await cdp.send("Animation.enable")
+    await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 })
+    await phone.page.evaluate(() => {
+      const track: { x: number; width: number }[] = []
+      Object.assign(window, { track })
+      const chevron = document.querySelector("#url-preview-chevron svg")!
+      const text = document.getElementById("url-full")!
+      const frame = () => {
+        track.push({ x: chevron.getBoundingClientRect().x, width: text.getBoundingClientRect().width })
+        if (track.length < 400) requestAnimationFrame(frame)
+      }
+      requestAnimationFrame(frame)
+    })
+    await tap()
+    await phone.page.waitForFunction(() => (window as unknown as { track: unknown[] }).track.length >= 400)
+    const track = await phone.page.evaluate(() => (window as unknown as { track: { x: number; width: number }[] }).track)
+    const steps = track.slice(1).map((f, i) => Math.abs(f.x - track[i].x))
+    expect(track.at(-1)!.x).toBeLessThan(track[0].x - 100)
+    expect(Math.max(...steps)).toBeLessThan(20)
+    expect(new Set(track.map((f) => Math.round(f.width))).size).toBe(1)
+    await phone.close()
+  })
+
   test("a copy changes the label but moves nothing in the link box", async () => {
     // "Copied" is wider than "Copy". The button grew, the box measured it,
     // and the link text jumped on the copy and again 2.5 seconds later.

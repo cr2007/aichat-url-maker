@@ -108,8 +108,8 @@ function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
   if (!hasUrl && expanded) setExpanded(false)
   const open = expanded && hasUrl
 
-  // The closed text stops before the buttons. Their width changes with Share
-  // and with the narrow layout, so it is measured, not guessed.
+  // The closed chevron stops before the buttons. Their width changes with
+  // Share and with the narrow layout, so it is measured, not guessed.
   useLayoutEffect(() => {
     const actions = actionsRef.current
     if (!actions) return
@@ -142,9 +142,15 @@ function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
         aria-expanded={open}
         aria-controls="url-full"
         onClick={() => setExpanded(!open)}
-        // On close the text keeps the full width until the box has shrunk.
-        // An early switch to the narrow column made the text jump.
-        className="flex min-h-11 w-full items-start gap-2 py-3 pl-3 pr-[calc(var(--actions-width,0px)+0.75rem)] text-left text-[0.8125rem] leading-5 text-muted-foreground focus-ring [transition:color_150ms,background-color_150ms,padding-right_0s_250ms] motion-reduce:delay-0 hover:text-foreground group-data-[open=true]:pr-3 group-data-[open=true]:text-foreground group-data-[open=true]:delay-0"
+        // The text has one width in both states, so its first line never
+        // wraps again. Closed, the buttons and the chevron cover its end.
+        // A width that changed at the end of the close made the text and
+        // the chevron jump. The placeholder has no chevron, so it stops
+        // before the buttons.
+        className={cn(
+          "relative flex min-h-11 w-full items-start gap-2 py-3 pl-3 pr-9 text-left text-[0.8125rem] leading-5 text-muted-foreground focus-ring transition-colors duration-150 hover:text-foreground group-data-[open=true]:text-foreground",
+          !hasUrl && "pr-[calc(var(--actions-width,0px)+0.75rem)]"
+        )}
       >
         <Link aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
         {hasUrl && <span className="sr-only">{open ? "Hide the full link: " : "Show the full link: "}</span>}
@@ -153,25 +159,39 @@ function LinkPreview({ url, tooLong = false, className }: LinkPreviewProps) {
             rush. The scrollbar is hidden; a touch still scrolls a long link. */}
         <span
           id="url-full"
-          className="relative block h-5 min-w-0 flex-1 overflow-hidden wrap-anywhere [interpolate-size:allow-keywords] [scrollbar-width:none] transition-[height,padding-bottom] duration-250 ease-in-out group-data-[open=true]:h-auto group-data-[open=true]:ease-out group-data-[open=true]:max-h-60 group-data-[open=true]:overflow-y-auto group-data-[open=true]:pb-11 group-data-[open=true]:animate-[link-settle_250ms_var(--ease-out)]"
+          className="relative block h-5 min-w-0 flex-1 overflow-hidden wrap-anywhere [interpolate-size:allow-keywords] [scrollbar-width:none] transition-[height,padding-bottom] duration-250 ease-in-out group-data-[open=true]:h-auto group-data-[open=true]:max-h-60 group-data-[open=true]:overflow-y-auto group-data-[open=true]:pb-11 group-data-[open=true]:animate-[link-settle_250ms_var(--ease-out)]"
         >
           {hasUrl ? readableUrl(url) : "Type a prompt to make a link."}
-          {/* The fade at the end of the first line says that there is more. */}
-          {hasUrl && (
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute top-0 right-0 h-5 w-10 bg-linear-to-l from-secondary transition-opacity duration-150 group-data-[open=true]:opacity-0"
-            />
-          )}
         </span>
-        {/* Up while closed: the box opens upward. Down while open. */}
+        {/* A mask in the colour of the box covers the end of the first line,
+            and its fade says that there is more. It stays under the buttons
+            and keeps time with the chevron. */}
         {hasUrl && (
-          <ChevronDown
+          <span
             aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 rotate-180 transition-transform duration-250 ease-out group-data-[open=true]:rotate-0"
-          />
+            className="pointer-events-none absolute top-3 right-0 h-5 w-9 bg-secondary -translate-x-(--actions-width) transition-[translate] duration-150 ease-in-out delay-150 motion-reduce:delay-0 group-data-[open=true]:translate-x-0 group-data-[open=true]:delay-0"
+          >
+            <span className="absolute top-0 right-full h-5 w-10 bg-linear-to-l from-secondary transition-opacity duration-150 group-data-[open=true]:opacity-0" />
+            {/* The text to the right is covered too, up to the buttons, so the
+                slide reads as one edge. The box clips this in the corner. */}
+            <span className="absolute top-0 left-full h-5 w-(--actions-width) bg-secondary" />
+          </span>
         )}
       </button>
+      {/* Up while closed: the box opens upward. Down while open. On open the
+          chevron runs along the button row behind the buttons, then rises out
+          of them to the corner. On close it drops behind them, then runs back
+          out. A top in percent follows the height of the box while the box
+          grows. It comes before the buttons, so they paint over it. */}
+      {hasUrl && (
+        <span
+          id="url-preview-chevron"
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[calc(100%-2rem)] right-3 flex h-5 items-center text-muted-foreground -translate-x-(--actions-width) [transition:translate_150ms_ease-in-out_150ms,top_250ms_ease-in-out] motion-reduce:transition-none group-data-[open=true]:top-3 group-data-[open=true]:translate-x-0 group-data-[open=true]:text-foreground group-data-[open=true]:[transition:translate_150ms_ease-in-out,top_250ms_ease-in-out_50ms]"
+        >
+          <ChevronDown className="size-4 rotate-180 transition-[rotate] duration-250 ease-out group-data-[open=true]:rotate-0" />
+        </span>
+      )}
       {/* The buttons never move: the bottom right corner in both states. */}
       <div ref={actionsRef} className="absolute right-0 bottom-0 flex bg-secondary">
         <LinkActions url={url} share={share} disabled={tooLong} />
