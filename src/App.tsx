@@ -216,24 +216,63 @@ const FeaturePills = memo(function FeaturePills({
   )
 })
 
-/** The keycap look. Pressed, it sinks 1px into a thinner bottom edge. */
+/**
+ * The keycap look. The fill takes a step toward the page text colour, so the
+ * label keeps 4.5:1 on the button in both appearances. Pressed, it sinks 1px.
+ */
 const KEYCAP_CLASS =
-  "inline-flex h-5 min-w-5 items-center justify-center rounded-[0.3125rem] border border-b-2 border-primary-foreground/35 bg-primary-foreground/15 px-1 font-sans text-[0.8125rem] leading-none font-medium data-[pressed=true]:translate-y-px data-[pressed=true]:border-b data-[pressed=true]:bg-primary-foreground/30"
+  "inline-flex h-5 min-w-5 items-center justify-center rounded-[0.3125rem] border border-b-2 border-primary-foreground/35 bg-[color-mix(in_oklab,var(--primary),var(--foreground)_22%)] px-1 font-sans text-[0.8125rem] leading-none font-medium data-[pressed=true]:translate-y-px data-[pressed=true]:border-b data-[pressed=true]:bg-[color-mix(in_oklab,var(--primary),var(--foreground)_36%)]"
 
 /**
- * The open shortcut as keycaps, in the open button on a wide screen with a
- * mouse. A held key shows as pressed. Screen readers get the shortcut from
- * `aria-keyshortcuts` on the button, so the keys are hidden from them.
+ * A mouse or a trackpad is connected: a fine pointer that can hover. A pen is
+ * fine too, but on Android it reports no hover, so it does not count.
+ */
+const FINE_POINTER = "(any-pointer: fine) and (any-hover: hover)"
+
+/**
+ * Follows the fine pointer query, so a mouse plugged in later shows the keys.
+ *
+ * @param onChange - Runs when the answer changes.
+ * @returns The function that stops the subscription.
+ */
+function subscribeFinePointer(onChange: () => void) {
+  const query = window.matchMedia(FINE_POINTER)
+  query.addEventListener("change", onChange)
+  return () => query.removeEventListener("change", onChange)
+}
+
+/**
+ * True if a key event comes from a physical keyboard. No browser API reports
+ * a keyboard, so the event is the proof. An on-screen keyboard on Android
+ * sends key code 229 or an empty `code`.
+ *
+ * @param event - The key event.
+ * @returns True for a physical key.
+ */
+function isPhysicalKey(event: KeyboardEvent) {
+  return event.code !== "" && event.keyCode !== 229 && !event.isComposing
+}
+
+/**
+ * The open shortcut as keycaps, in the open button. They show when a mouse or
+ * a trackpad is connected, or after the first key from a physical keyboard.
+ * Screen width does not count. A held key shows as pressed. Screen readers
+ * get the shortcut from `aria-keyshortcuts` on the button.
  *
  * @param props.apple - True to show Command instead of Ctrl.
  * @returns The keycaps.
  */
 function ShortcutKeys({ apple }: { apple: boolean }) {
   const [held, setHeld] = useState({ mod: false, enter: false })
+  // The server has no pointer, so the prerendered page shows no keys.
+  const finePointer = useSyncExternalStore(subscribeFinePointer, () => window.matchMedia(FINE_POINTER).matches, () => false)
+  // The page stores nothing, so the proof of a keyboard lasts for this visit.
+  const [keyboard, setKeyboard] = useState(false)
 
   useEffect(() => {
     // Step 1.1: follow the modifier and Enter. Other keys cause no render.
     const read = (event: KeyboardEvent) => {
+      if (event.type === "keydown" && isPhysicalKey(event)) setKeyboard(true)
       const mod = apple ? event.metaKey : event.ctrlKey
       const enter = event.key === "Enter" ? event.type === "keydown" : undefined
       setHeld((prev) => {
@@ -254,7 +293,7 @@ function ShortcutKeys({ apple }: { apple: boolean }) {
   }, [apple])
 
   return (
-    <kbd aria-hidden="true" className="ml-1 hidden items-center gap-1 lg:pointer-fine:inline-flex">
+    <kbd aria-hidden="true" className={cn("ml-1 items-center gap-1", finePointer || keyboard ? "inline-flex" : "hidden")}>
       <kbd data-pressed={held.mod} className={KEYCAP_CLASS}>
         {apple ? "⌘" : "Ctrl"}
       </kbd>
@@ -651,7 +690,7 @@ function PageContent() {
               onClick={handleOpenInProvider}
               disabled={!url}
               aria-keyshortcuts="Control+Enter Meta+Enter"
-              className="w-full h-auto min-h-11 py-3 font-medium rounded-md whitespace-normal text-center"
+              className="w-full h-auto min-h-11 flex-wrap py-3 font-medium rounded-md whitespace-normal text-center"
             >
               {isTooLong ? <Copy className="w-4 h-4" /> : provider.icon}
               {isTooLong ? `Copy prompt and open ${provider.name}` : `Open in ${provider.name}`}

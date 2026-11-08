@@ -774,6 +774,30 @@ describe("plain use for every reader", () => {
     await opened.close()
   })
 
+  test("the keys show for a mouse at any width, and on a touch screen after a physical key", async () => {
+    // The keys showed only from 1024px, so a narrow desktop window lost them,
+    // and a phone with a keyboard never got them. Width says nothing about input.
+    const shown = (page: import("playwright").Page) =>
+      page.evaluate(() => getComputedStyle(document.querySelector("#open-in-provider > kbd")!).display !== "none")
+    const desktop = await openPage({ width: 700, height: 800 })
+    expect(await shown(desktop.page)).toBe(true)
+    await desktop.close()
+
+    const phone = await openPage({ touch: true, width: 320, height: 640 })
+    await fillPrompt(phone.page)
+    const dock = () => phone.page.evaluate(() => Math.round(document.getElementById("open-action-section")!.getBoundingClientRect().height))
+    const before = await dock()
+    expect(await shown(phone.page)).toBe(false)
+    // An on-screen keyboard sends no key code. It is no proof of a keyboard.
+    await phone.page.evaluate(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Unidentified" })))
+    expect(await shown(phone.page)).toBe(false)
+    await phone.page.keyboard.press("Shift")
+    expect(await shown(phone.page)).toBe(true)
+    // The keys fit in the open button, so the dock keeps its height.
+    expect(await dock()).toBe(before)
+    await phone.close()
+  })
+
   test("a held key shows as pressed on its keycap, and a blur clears it", async () => {
     const opened = await openPage({ width: 1280, height: 800 })
     const pressed = () =>
