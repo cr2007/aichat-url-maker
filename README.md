@@ -7,10 +7,12 @@ ready to send.
 
 **Try it:** https://cr2007.github.io/aichat-url-maker
 
+<p align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/demo-dark.gif">
   <img src="docs/demo-light.gif" width="800" alt="Demo: a person types a prompt, turns on Search and Temporary chat, copies the link, and clicks Open in ChatGPT. The link updates with each choice.">
 </picture>
+</p>
 
 ## What it does
 
